@@ -32,6 +32,9 @@ if "language" not in st.session_state:
 if "user_name" not in st.session_state:
     st.session_state.user_name = ""
 
+if "user_email" not in st.session_state:
+    st.session_state.user_email = ""
+
 if "signed_in" not in st.session_state:
     st.session_state.signed_in = False
 
@@ -57,8 +60,12 @@ ui_translations = {
         "caption": "Your versatile AI assistant - talk about literally anything",
         "enter_name": "Enter your name:",
         "name_placeholder": "Your name",
+        "enter_email": "Enter your email:",
+        "email_placeholder": "your.email@example.com",
+        "enter_password": "Enter your password:",
+        "password_placeholder": "Password",
         "signin_title": "🔐 Sign In",
-        "signin_welcome": "Welcome! Please enter your name to continue",
+        "signin_welcome": "Welcome! Please create your account to continue",
         "signin_button": "Sign In",
         "signout_button": "Sign Out",
         "welcome": "👋 Welcome! I'm your Everything AI Assistant. I can discuss any topic with you: learning, work, life, entertainment, technology, arts, and more. Whatever you want to chat about, I'm here to help!",
@@ -100,8 +107,12 @@ ui_translations = {
         "caption": "您的多功能 AI 助手 - 无所不谈",
         "enter_name": "输入您的名字：",
         "name_placeholder": "您的名字",
+        "enter_email": "输入您的邮箱：",
+        "email_placeholder": "your.email@example.com",
+        "enter_password": "输入您的密码：",
+        "password_placeholder": "密码",
         "signin_title": "🔐 登录",
-        "signin_welcome": "欢迎！请输入您的名字以继续",
+        "signin_welcome": "欢迎！请创建您的账户以继续",
         "signin_button": "登录",
         "signout_button": "退出登录",
         "welcome": "👋 欢迎！我是您的万能 AI 助手。我可以和您讨论任何话题：学习、工作、生活、娱乐、科技、艺术等等。无论您想聊什么，我都乐意奉陪！",
@@ -143,8 +154,12 @@ ui_translations = {
         "caption": "Tu asistente AI versátil - habla de literalmente cualquier cosa",
         "enter_name": "Ingresa tu nombre:",
         "name_placeholder": "Tu nombre",
+        "enter_email": "Ingresa tu correo electrónico:",
+        "email_placeholder": "tu.correo@ejemplo.com",
+        "enter_password": "Ingresa tu contraseña:",
+        "password_placeholder": "Contraseña",
         "signin_title": "🔐 Iniciar Sesión",
-        "signin_welcome": "¡Bienvenido! Ingresa tu nombre para continuar",
+        "signin_welcome": "¡Bienvenido! Crea tu cuenta para continuar",
         "signin_button": "Iniciar Sesión",
         "signout_button": "Cerrar Sesión",
         "welcome": "👋 ¡Bienvenido! Soy tu Asistente AI Todoterreno. Puedo discutir cualquier tema contigo: aprendizaje, trabajo, vida, entretenimiento, tecnología, artes y más. ¡Lo que quieras hablar, estoy aquí para ayudar!",
@@ -186,8 +201,12 @@ ui_translations = {
         "caption": "Votre assistant AI polyvalent - parlez de n'importe quoi",
         "enter_name": "Entrez votre nom:",
         "name_placeholder": "Votre nom",
+        "enter_email": "Entrez votre e-mail:",
+        "email_placeholder": "votre.email@exemple.com",
+        "enter_password": "Entrez votre mot de passe:",
+        "password_placeholder": "Mot de passe",
         "signin_title": "🔐 Connexion",
-        "signin_welcome": "Bienvenue! Entrez votre nom pour continuer",
+        "signin_welcome": "Bienvenue! Créez votre compte pour continuer",
         "signin_button": "Se Connecter",
         "signout_button": "Se Déconnecter",
         "welcome": "👋 Bienvenue! Je suis votre Assistant AI Polyvalent. Je peux discuter de n'importe quel sujet avec vous: apprentissage, travail, vie, divertissement, technologie, arts et plus. Quoi que vous vouliez discuter, je suis là pour vous aider!",
@@ -229,8 +248,12 @@ ui_translations = {
         "caption": "Ihr vielseitiger AI-Assistent - sprechen Sie über buchstäblich alles",
         "enter_name": "Geben Sie Ihren Namen ein:",
         "name_placeholder": "Ihr Name",
+        "enter_email": "Geben Sie Ihre E-Mail ein:",
+        "email_placeholder": "ihre.email@beispiel.com",
+        "enter_password": "Geben Sie Ihr Passwort ein:",
+        "password_placeholder": "Passwort",
         "signin_title": "🔐 Anmelden",
-        "signin_welcome": "Willkommen! Geben Sie Ihren Namen ein, um fortzufahren",
+        "signin_welcome": "Willkommen! Erstellen Sie Ihr Konto, um fortzufahren",
         "signin_button": "Anmelden",
         "signout_button": "Abmelden",
         "welcome": "👋 Willkommen! Ich bin Ihr Alleskönner AI-Assistent. Ich kann mit Ihnen über jedes Thema sprechen: Lernen, Arbeit, Leben, Unterhaltung, Technologie, Kunst und mehr. Worüber Sie auch sprechen möchten, ich bin hier, um zu helfen!",
@@ -272,8 +295,12 @@ ui_translations = {
         "caption": "あなたの多用途AIアシスタント - 文字通り何でも話せます",
         "enter_name": "名前を入力：",
         "name_placeholder": "あなたの名前",
+        "enter_email": "メールアドレスを入力：",
+        "email_placeholder": "your.email@example.com",
+        "enter_password": "パスワードを入力：",
+        "password_placeholder": "パスワード",
         "signin_title": "🔐 サインイン",
-        "signin_welcome": "ようこそ！続行するには名前を入力してください",
+        "signin_welcome": "ようこそ！続行するにはアカウントを作成してください",
         "signin_button": "サインイン",
         "signout_button": "サインアウト",
         "welcome": "👋 ようこそ！私はあなたの万能AIアシスタントです。学習、仕事、生活、娯楽、技術、芸術など、あらゆるトピックについて話し合うことができます。何を話したくても、お手伝いします！",
@@ -315,8 +342,12 @@ ui_translations = {
         "caption": "당신의 다재다능한 AI 어시스턴트 - 문자 그대로 모든 것에 대해 이야기하세요",
         "enter_name": "이름을 입력하세요:",
         "name_placeholder": "당신의 이름",
+        "enter_email": "이메일을 입력하세요:",
+        "email_placeholder": "your.email@example.com",
+        "enter_password": "비밀번호를 입력하세요:",
+        "password_placeholder": "비밀번호",
         "signin_title": "🔐 로그인",
-        "signin_welcome": "환영합니다! 계속하려면 이름을 입력하세요",
+        "signin_welcome": "환영합니다! 계속하려면 계정을 만드세요",
         "signin_button": "로그인",
         "signout_button": "로그아웃",
         "welcome": "👋 환영합니다! 저는 당신의 만능 AI 어시스턴트입니다. 학습, 업무, 생활, 엔터테인먼트, 기술, 예술 등 모든 주제에 대해 토론할 수 있습니다. 무엇을 이야기하고 싶든, 도와드리겠습니다!",
@@ -358,8 +389,12 @@ ui_translations = {
         "caption": "Seu assistente AI versátil - fale sobre literalmente qualquer coisa",
         "enter_name": "Digite seu nome:",
         "name_placeholder": "Seu nome",
+        "enter_email": "Digite seu e-mail:",
+        "email_placeholder": "seu.email@exemplo.com",
+        "enter_password": "Digite sua senha:",
+        "password_placeholder": "Senha",
         "signin_title": "🔐 Entrar",
-        "signin_welcome": "Bem-vindo! Digite seu nome para continuar",
+        "signin_welcome": "Bem-vindo! Crie sua conta para continuar",
         "signin_button": "Entrar",
         "signout_button": "Sair",
         "welcome": "👋 Bem-vindo! Sou seu Assistente AI Versátil. Posso discutir qualquer tópico com você: aprendizado, trabalho, vida, entretenimento, tecnologia, artes e muito mais. Seja qual for o assunto, estou aqui para ajudar!",
@@ -401,8 +436,12 @@ ui_translations = {
         "caption": "Ваш универсальный AI ассистент - говорите буквально о чем угодно",
         "enter_name": "Введите ваше имя:",
         "name_placeholder": "Ваше имя",
+        "enter_email": "Введите ваш e-mail:",
+        "email_placeholder": "your.email@example.com",
+        "enter_password": "Введите ваш пароль:",
+        "password_placeholder": "Пароль",
         "signin_title": "🔐 Вход",
-        "signin_welcome": "Добро пожаловать! Введите ваше имя, чтобы продолжить",
+        "signin_welcome": "Добро пожаловать! Создайте свой аккаунт, чтобы продолжить",
         "signin_button": "Войти",
         "signout_button": "Выйти",
         "welcome": "👋 Добро пожаловать! Я ваш Универсальный AI Ассистент. Я могу обсудить с вами любую тему: обучение, работу, жизнь, развлечения, технологии, искусство и многое другое. О чем бы вы ни хотели поговорить, я здесь, чтобы помочь!",
@@ -444,8 +483,12 @@ ui_translations = {
         "caption": "مساعدك الذكي المتعدد الاستخدامات - تحدث عن أي شيء حرفياً",
         "enter_name": "أدخل اسمك:",
         "name_placeholder": "اسمك",
+        "enter_email": "أدخل بريدك الإلكتروني:",
+        "email_placeholder": "your.email@example.com",
+        "enter_password": "أدخل كلمة المرور:",
+        "password_placeholder": "كلمة المرور",
         "signin_title": "🔐 تسجيل الدخول",
-        "signin_welcome": "مرحباً! أدخل اسمك للمتابعة",
+        "signin_welcome": "مرحباً! أنشئ حسابك للمتابعة",
         "signin_button": "تسجيل الدخول",
         "signout_button": "تسجيل الخروج",
         "welcome": "👋 مرحباً! أنا مساعدك الذكي الشامل. يمكنني مناقشة أي موضوع معك: التعلم، العمل، الحياة، الترفيه، التكنولوجيا، الفنون والمزيد. مهما كان ما تريد التحدث عنه، أنا هنا للمساعدة!",
@@ -568,13 +611,27 @@ if not st.session_state.signed_in:
             key="signin_name_input"
         )
 
+        signin_email = st.text_input(
+            t["enter_email"],
+            placeholder=t["email_placeholder"],
+            key="signin_email_input"
+        )
+
+        signin_password = st.text_input(
+            t["enter_password"],
+            placeholder=t["password_placeholder"],
+            type="password",
+            key="signin_password_input"
+        )
+
         if st.button(t["signin_button"], type="primary", use_container_width=True):
-            if signin_name.strip():
+            if signin_name.strip() and signin_email.strip() and signin_password.strip():
                 st.session_state.user_name = signin_name.strip()
+                st.session_state.user_email = signin_email.strip()
                 st.session_state.signed_in = True
                 st.rerun()
             else:
-                st.error("Please enter your name")
+                st.error("Please fill in all fields")
 
     st.stop()
 
@@ -715,9 +772,11 @@ with st.sidebar:
 
     # Display signed-in user and sign-out button
     st.write(f"👤 **{st.session_state.user_name}**")
+    st.write(f"📧 {st.session_state.user_email}")
     if st.button(t["signout_button"], use_container_width=True):
         st.session_state.signed_in = False
         st.session_state.user_name = ""
+        st.session_state.user_email = ""
         st.session_state.messages = []
         st.rerun()
 
