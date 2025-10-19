@@ -1,5 +1,8 @@
 import streamlit as st
 import os
+import re
+import sys
+from io import StringIO
 from groq import Groq
 from dotenv import load_dotenv
 
@@ -11,13 +14,13 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # Set page configuration
 st.set_page_config(
-    page_title="My Everything AI Assistant",
+    page_title="My Can Do Everything AI Assistant",
     page_icon="💬",
     layout="centered"
 )
 
 # Page title
-st.title("💬 My Everything AI Assistant")
+st.title("💬 My Can Do Everything AI Assistant")
 st.caption("Your versatile AI assistant - talk about literally anything")
 
 # Welcome message
@@ -32,9 +35,9 @@ if "personality" not in st.session_state:
 
 # Define AI personality settings
 personality_prompts = {
-    "Friendly": "You are a warm and friendly AI assistant who chats like a friend. Use a kind tone, appropriate emojis, and make conversations relaxed and pleasant.",
-    "Professional": "You are a rigorous and professional AI assistant who provides accurate and reliable advice. Use a formal tone, focus on logic and accuracy, and give detailed explanations.",
-    "Humorous": "You are a relaxed and humorous AI assistant who makes chatting fun. Use a witty tone, make appropriate jokes, but ensure information accuracy."
+    "Friendly": "You are a warm and friendly AI assistant who chats like a friend. Use a kind tone, appropriate emojis, and make conversations relaxed and pleasant. Always understand the user's intent even if they make typos, spelling mistakes, or use incorrect words. Be forgiving and helpful. When showing Python code examples, always wrap them in ```python code blocks so they can be executed.",
+    "Professional": "You are a rigorous and professional AI assistant who provides accurate and reliable advice. Use a formal tone, focus on logic and accuracy, and give detailed explanations. Understand user intent even with typos or unclear phrasing, and politely clarify if needed. When showing Python code examples, always wrap them in ```python code blocks so they can be executed.",
+    "Humorous": "You are a relaxed and humorous AI assistant who makes chatting fun. Use a witty tone, make appropriate jokes, but ensure information accuracy. Don't worry about typos or mistakes - understand what the user means and maybe make a light joke about it! When showing Python code examples, always wrap them in ```python code blocks so they can be executed."
 }
 
 personality_icons = {
@@ -43,10 +46,74 @@ personality_icons = {
     "Humorous": "😄"
 }
 
+# Function to extract and run Python code
+def extract_and_run_code(text):
+    """Extract Python code blocks from text and execute them"""
+    # Find code blocks in markdown format
+    code_pattern = r'```python\n(.*?)```'
+    matches = re.findall(code_pattern, text, re.DOTALL)
+
+    results = []
+    for code in matches:
+        # Create a string buffer to capture output
+        output_buffer = StringIO()
+        error_buffer = StringIO()
+
+        try:
+            # Redirect stdout to capture print statements
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            sys.stdout = output_buffer
+            sys.stderr = error_buffer
+
+            # Execute the code
+            exec(code, {"__builtins__": __builtins__})
+
+            # Restore stdout
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+            output = output_buffer.getvalue()
+            error = error_buffer.getvalue()
+
+            if output or error:
+                results.append({
+                    'code': code,
+                    'output': output if output else None,
+                    'error': error if error else None,
+                    'success': not error
+                })
+        except Exception as e:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+            results.append({
+                'code': code,
+                'output': None,
+                'error': str(e),
+                'success': False
+            })
+
+    return results
+
 # Display chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+
+        # If assistant message contains code, show run button
+        if message["role"] == "assistant" and "```python" in message["content"]:
+            if st.button(f"▶️ Run Code", key=f"run_{st.session_state.messages.index(message)}"):
+                code_results = extract_and_run_code(message["content"])
+                for result in code_results:
+                    with st.expander("📟 Code Execution Result", expanded=True):
+                        st.code(result['code'], language='python')
+                        if result['success']:
+                            if result['output']:
+                                st.success("✅ Output:")
+                                st.code(result['output'])
+                        else:
+                            st.error("❌ Error:")
+                            st.code(result['error'])
 
 # User input
 if prompt := st.chat_input("Type your message here..."):
