@@ -29,6 +29,9 @@ if "personality" not in st.session_state:
 if "language" not in st.session_state:
     st.session_state.language = "English"
 
+if "user_name" not in st.session_state:
+    st.session_state.user_name = ""
+
 # Language instruction templates and UI translations
 language_instructions = {
     "English": "Respond in English.",
@@ -46,8 +49,11 @@ language_instructions = {
 # UI translations for all languages
 ui_translations = {
     "English": {
-        "title": "💬 My Can Do Everything AI Assistant",
+        "title": "💬 {name} Can Do Everything AI GPT",
+        "title_default": "💬 My Can Do Everything AI GPT",
         "caption": "Your versatile AI assistant - talk about literally anything",
+        "enter_name": "Enter your name:",
+        "name_placeholder": "Your name",
         "welcome": "👋 Welcome! I'm your Everything AI Assistant. I can discuss any topic with you: learning, work, life, entertainment, technology, arts, and more. Whatever you want to chat about, I'm here to help!",
         "settings": "⚙️ Settings",
         "language": "🌐 Language",
@@ -82,8 +88,11 @@ ui_translations = {
         "humorous": "Humorous"
     },
     "中文 (Chinese)": {
-        "title": "💬 我的万能 AI 助手",
+        "title": "💬 {name} 的万能 AI GPT",
+        "title_default": "💬 我的万能 AI GPT",
         "caption": "您的多功能 AI 助手 - 无所不谈",
+        "enter_name": "输入您的名字：",
+        "name_placeholder": "您的名字",
         "welcome": "👋 欢迎！我是您的万能 AI 助手。我可以和您讨论任何话题：学习、工作、生活、娱乐、科技、艺术等等。无论您想聊什么，我都乐意奉陪！",
         "settings": "⚙️ 设置",
         "language": "🌐 语言",
@@ -118,8 +127,11 @@ ui_translations = {
         "humorous": "幽默型"
     },
     "Español (Spanish)": {
-        "title": "💬 Mi Asistente AI Todoterreno",
+        "title": "💬 {name} AI GPT Todoterreno",
+        "title_default": "💬 Mi AI GPT Todoterreno",
         "caption": "Tu asistente AI versátil - habla de literalmente cualquier cosa",
+        "enter_name": "Ingresa tu nombre:",
+        "name_placeholder": "Tu nombre",
         "welcome": "👋 ¡Bienvenido! Soy tu Asistente AI Todoterreno. Puedo discutir cualquier tema contigo: aprendizaje, trabajo, vida, entretenimiento, tecnología, artes y más. ¡Lo que quieras hablar, estoy aquí para ayudar!",
         "settings": "⚙️ Configuración",
         "language": "🌐 Idioma",
@@ -154,8 +166,11 @@ ui_translations = {
         "humorous": "Divertido"
     },
     "Français (French)": {
-        "title": "💬 Mon Assistant AI Polyvalent",
+        "title": "💬 {name} AI GPT Polyvalent",
+        "title_default": "💬 Mon AI GPT Polyvalent",
         "caption": "Votre assistant AI polyvalent - parlez de n'importe quoi",
+        "enter_name": "Entrez votre nom:",
+        "name_placeholder": "Votre nom",
         "welcome": "👋 Bienvenue! Je suis votre Assistant AI Polyvalent. Je peux discuter de n'importe quel sujet avec vous: apprentissage, travail, vie, divertissement, technologie, arts et plus. Quoi que vous vouliez discuter, je suis là pour vous aider!",
         "settings": "⚙️ Paramètres",
         "language": "🌐 Langue",
@@ -190,8 +205,11 @@ ui_translations = {
         "humorous": "Humoristique"
     },
     "Deutsch (German)": {
-        "title": "💬 Mein Alleskönner AI-Assistent",
+        "title": "💬 {name}s Alleskönner AI GPT",
+        "title_default": "💬 Mein Alleskönner AI GPT",
         "caption": "Ihr vielseitiger AI-Assistent - sprechen Sie über buchstäblich alles",
+        "enter_name": "Geben Sie Ihren Namen ein:",
+        "name_placeholder": "Ihr Name",
         "welcome": "👋 Willkommen! Ich bin Ihr Alleskönner AI-Assistent. Ich kann mit Ihnen über jedes Thema sprechen: Lernen, Arbeit, Leben, Unterhaltung, Technologie, Kunst und mehr. Worüber Sie auch sprechen möchten, ich bin hier, um zu helfen!",
         "settings": "⚙️ Einstellungen",
         "language": "🌐 Sprache",
@@ -226,8 +244,11 @@ ui_translations = {
         "humorous": "Humorvoll"
     },
     "日本語 (Japanese)": {
-        "title": "💬 私の万能AIアシスタント",
+        "title": "💬 {name} の万能 AI GPT",
+        "title_default": "💬 私の万能 AI GPT",
         "caption": "あなたの多用途AIアシスタント - 文字通り何でも話せます",
+        "enter_name": "名前を入力：",
+        "name_placeholder": "あなたの名前",
         "welcome": "👋 ようこそ！私はあなたの万能AIアシスタントです。学習、仕事、生活、娯楽、技術、芸術など、あらゆるトピックについて話し合うことができます。何を話したくても、お手伝いします！",
         "settings": "⚙️ 設定",
         "language": "🌐 言語",
@@ -262,8 +283,11 @@ ui_translations = {
         "humorous": "ユーモラス"
     },
     "한국어 (Korean)": {
-        "title": "💬 나의 만능 AI 어시스턴트",
+        "title": "💬 {name}의 만능 AI GPT",
+        "title_default": "💬 나의 만능 AI GPT",
         "caption": "당신의 다재다능한 AI 어시스턴트 - 문자 그대로 모든 것에 대해 이야기하세요",
+        "enter_name": "이름을 입력하세요:",
+        "name_placeholder": "당신의 이름",
         "welcome": "👋 환영합니다! 저는 당신의 만능 AI 어시스턴트입니다. 학습, 업무, 생활, 엔터테인먼트, 기술, 예술 등 모든 주제에 대해 토론할 수 있습니다. 무엇을 이야기하고 싶든, 도와드리겠습니다!",
         "settings": "⚙️ 설정",
         "language": "🌐 언어",
@@ -298,8 +322,11 @@ ui_translations = {
         "humorous": "유머러스"
     },
     "Português (Portuguese)": {
-        "title": "💬 Meu Assistente AI Versátil",
+        "title": "💬 {name} AI GPT Versátil",
+        "title_default": "💬 Meu AI GPT Versátil",
         "caption": "Seu assistente AI versátil - fale sobre literalmente qualquer coisa",
+        "enter_name": "Digite seu nome:",
+        "name_placeholder": "Seu nome",
         "welcome": "👋 Bem-vindo! Sou seu Assistente AI Versátil. Posso discutir qualquer tópico com você: aprendizado, trabalho, vida, entretenimento, tecnologia, artes e muito mais. Seja qual for o assunto, estou aqui para ajudar!",
         "settings": "⚙️ Configurações",
         "language": "🌐 Idioma",
@@ -334,8 +361,11 @@ ui_translations = {
         "humorous": "Bem-humorado"
     },
     "Русский (Russian)": {
-        "title": "💬 Мой Универсальный AI Ассистент",
+        "title": "💬 {name} Универсальный AI GPT",
+        "title_default": "💬 Мой Универсальный AI GPT",
         "caption": "Ваш универсальный AI ассистент - говорите буквально о чем угодно",
+        "enter_name": "Введите ваше имя:",
+        "name_placeholder": "Ваше имя",
         "welcome": "👋 Добро пожаловать! Я ваш Универсальный AI Ассистент. Я могу обсудить с вами любую тему: обучение, работу, жизнь, развлечения, технологии, искусство и многое другое. О чем бы вы ни хотели поговорить, я здесь, чтобы помочь!",
         "settings": "⚙️ Настройки",
         "language": "🌐 Язык",
@@ -370,8 +400,11 @@ ui_translations = {
         "humorous": "Юмористичный"
     },
     "العربية (Arabic)": {
-        "title": "💬 مساعدي الذكي الشامل",
+        "title": "💬 {name} GPT الذكي الشامل",
+        "title_default": "💬 GPT الذكي الشامل الخاص بي",
         "caption": "مساعدك الذكي المتعدد الاستخدامات - تحدث عن أي شيء حرفياً",
+        "enter_name": "أدخل اسمك:",
+        "name_placeholder": "اسمك",
         "welcome": "👋 مرحباً! أنا مساعدك الذكي الشامل. يمكنني مناقشة أي موضوع معك: التعلم، العمل، الحياة، الترفيه، التكنولوجيا، الفنون والمزيد. مهما كان ما تريد التحدث عنه، أنا هنا للمساعدة!",
         "settings": "⚙️ الإعدادات",
         "language": "🌐 اللغة",
@@ -407,11 +440,65 @@ ui_translations = {
     }
 }
 
-# Define AI personality settings
+# Define AI personality settings (for API - always in English)
 personality_prompts = {
     "Friendly": "You are a warm and friendly AI assistant who chats like a friend. Use a kind tone, appropriate emojis, and make conversations relaxed and pleasant. Always understand the user's intent even if they make typos, spelling mistakes, or use incorrect words. Be forgiving and helpful. When showing Python code examples, always wrap them in ```python code blocks so they can be executed.",
     "Professional": "You are a rigorous and professional AI assistant who provides accurate and reliable advice. Use a formal tone, focus on logic and accuracy, and give detailed explanations. Understand user intent even with typos or unclear phrasing, and politely clarify if needed. When showing Python code examples, always wrap them in ```python code blocks so they can be executed.",
     "Humorous": "You are a relaxed and humorous AI assistant who makes chatting fun. Use a witty tone, make appropriate jokes, but ensure information accuracy. Don't worry about typos or mistakes - understand what the user means and maybe make a light joke about it! When showing Python code examples, always wrap them in ```python code blocks so they can be executed."
+}
+
+# Personality descriptions (for UI display - multilingual)
+personality_descriptions = {
+    "English": {
+        "Friendly": "You are a warm and friendly AI assistant who chats like a friend. Use a kind tone, appropriate emojis, and make conversations relaxed and pleasant. Always understand the user's intent even if they make typos, spelling mistakes, or use incorrect words. Be forgiving and helpful. When showing Python code examples, always wrap them in ```python code blocks so they can be executed.",
+        "Professional": "You are a rigorous and professional AI assistant who provides accurate and reliable advice. Use a formal tone, focus on logic and accuracy, and give detailed explanations. Understand user intent even with typos or unclear phrasing, and politely clarify if needed. When showing Python code examples, always wrap them in ```python code blocks so they can be executed.",
+        "Humorous": "You are a relaxed and humorous AI assistant who makes chatting fun. Use a witty tone, make appropriate jokes, but ensure information accuracy. Don't worry about typos or mistakes - understand what the user means and maybe make a light joke about it! When showing Python code examples, always wrap them in ```python code blocks so they can be executed."
+    },
+    "中文 (Chinese)": {
+        "Friendly": "你是一个温暖友好的 AI 助手，像朋友一样聊天。使用亲切的语气和适当的表情符号，让对话轻松愉快。即使用户打错字、拼写错误或使用不正确的词语，也要理解用户的意图。宽容且乐于助人。显示 Python 代码示例时，请用 ```python 代码块包装，以便执行。",
+        "Professional": "你是一个严谨专业的 AI 助手，提供准确可靠的建议。使用正式的语气，注重逻辑性和准确性，给出详细的解释。即使有拼写错误或表达不清，也要理解用户意图，并礼貌地澄清。显示 Python 代码示例时，请用 ```python 代码块包装，以便执行。",
+        "Humorous": "你是一个轻松幽默的 AI 助手，让聊天变得有趣。使用诙谐的语气，适当开玩笑，但要确保信息的准确性。不要担心拼写错误或错误 - 理解用户的意思，也许可以开个小玩笑！显示 Python 代码示例时，请用 ```python 代码块包装，以便执行。"
+    },
+    "Español (Spanish)": {
+        "Friendly": "Eres un asistente AI cálido y amigable que charla como un amigo. Usa un tono amable, emojis apropiados y haz que las conversaciones sean relajadas y agradables. Comprende siempre la intención del usuario incluso si comete errores tipográficos o usa palabras incorrectas. Sé comprensivo y servicial. Al mostrar ejemplos de código Python, envuélvelos en bloques ```python para que puedan ejecutarse.",
+        "Professional": "Eres un asistente AI riguroso y profesional que brinda consejos precisos y confiables. Usa un tono formal, enfócate en la lógica y precisión, y da explicaciones detalladas. Comprende la intención del usuario incluso con errores, y aclara cortésmente si es necesario. Al mostrar ejemplos de código Python, envuélvelos en bloques ```python para que puedan ejecutarse.",
+        "Humorous": "Eres un asistente AI relajado y humorístico que hace que chatear sea divertido. Usa un tono ingenioso, haz bromas apropiadas, pero asegura la precisión de la información. ¡No te preocupes por los errores tipográficos - comprende lo que el usuario quiere decir y tal vez haz una broma ligera! Al mostrar ejemplos de código Python, envuélvelos en bloques ```python para que puedan ejecutarse."
+    },
+    "Français (French)": {
+        "Friendly": "Vous êtes un assistant IA chaleureux et amical qui discute comme un ami. Utilisez un ton aimable, des emojis appropriés et rendez les conversations détendues et agréables. Comprenez toujours l'intention de l'utilisateur même s'il fait des fautes de frappe ou utilise des mots incorrects. Soyez indulgent et serviable. Lorsque vous montrez des exemples de code Python, enveloppez-les dans des blocs ```python pour qu'ils puissent être exécutés.",
+        "Professional": "Vous êtes un assistant IA rigoureux et professionnel qui fournit des conseils précis et fiables. Utilisez un ton formel, concentrez-vous sur la logique et la précision, et donnez des explications détaillées. Comprenez l'intention même avec des erreurs, et clarifiez poliment si nécessaire. Lorsque vous montrez des exemples de code Python, enveloppez-les dans des blocs ```python pour qu'ils puissent être exécutés.",
+        "Humorous": "Vous êtes un assistant IA détendu et humoristique qui rend le chat amusant. Utilisez un ton spirituel, faites des blagues appropriées, mais assurez l'exactitude des informations. Ne vous inquiétez pas des erreurs - comprenez ce que l'utilisateur veut dire et faites peut-être une blague légère! Lorsque vous montrez des exemples de code Python, enveloppez-les dans des blocs ```python pour qu'ils puissent être exécutés."
+    },
+    "Deutsch (German)": {
+        "Friendly": "Sie sind ein warmherziger und freundlicher KI-Assistent, der wie ein Freund chattet. Verwenden Sie einen freundlichen Ton, passende Emojis und machen Sie Gespräche entspannt und angenehm. Verstehen Sie immer die Absicht des Benutzers, auch wenn Tippfehler oder falsche Wörter verwendet werden. Seien Sie nachsichtig und hilfsbereit. Wenn Sie Python-Codebeispiele zeigen, verpacken Sie sie in ```python-Blöcken, damit sie ausgeführt werden können.",
+        "Professional": "Sie sind ein strenger und professioneller KI-Assistent, der präzise und zuverlässige Ratschläge gibt. Verwenden Sie einen formellen Ton, konzentrieren Sie sich auf Logik und Genauigkeit und geben Sie detaillierte Erklärungen. Verstehen Sie die Absicht auch bei Fehlern und klären Sie höflich bei Bedarf. Wenn Sie Python-Codebeispiele zeigen, verpacken Sie sie in ```python-Blöcken, damit sie ausgeführt werden können.",
+        "Humorous": "Sie sind ein entspannter und humorvoller KI-Assistent, der das Chatten unterhaltsam macht. Verwenden Sie einen witzigen Ton, machen Sie angemessene Witze, aber stellen Sie die Genauigkeit der Informationen sicher. Machen Sie sich keine Sorgen über Tippfehler - verstehen Sie, was der Benutzer meint, und machen Sie vielleicht einen leichten Scherz! Wenn Sie Python-Codebeispiele zeigen, verpacken Sie sie in ```python-Blöcken, damit sie ausgeführt werden können."
+    },
+    "日本語 (Japanese)": {
+        "Friendly": "あなたは友人のように話す温かくフレンドリーなAIアシスタントです。親切な口調、適切な絵文字を使い、会話をリラックスして楽しくしてください。タイプミスやスペルミス、間違った言葉を使っても、常にユーザーの意図を理解してください。寛容で役立つようにしてください。Pythonコード例を示すときは、実行できるように```pythonブロックで囲んでください。",
+        "Professional": "あなたは厳格で専門的なAIアシスタントで、正確で信頼できるアドバイスを提供します。正式な口調を使い、論理性と正確性に焦点を当て、詳細な説明をしてください。エラーがあっても意図を理解し、必要に応じて丁寧に明確にしてください。Pythonコード例を示すときは、実行できるように```pythonブロックで囲んでください。",
+        "Humorous": "あなたはリラックスしたユーモラスなAIアシスタントで、チャットを楽しくします。機知に富んだ口調を使い、適切な冗談を言いますが、情報の正確性を確保してください。タイプミスや間違いを心配しないでください - ユーザーの意味を理解し、軽い冗談を言うかもしれません！Pythonコード例を示すときは、実行できるように```pythonブロックで囲んでください。"
+    },
+    "한국어 (Korean)": {
+        "Friendly": "당신은 친구처럼 대화하는 따뜻하고 친근한 AI 어시스턴트입니다. 친절한 어조, 적절한 이모티콘을 사용하고 대화를 편안하고 즐겁게 만드세요. 오타, 철자 오류 또는 잘못된 단어를 사용하더라도 항상 사용자의 의도를 이해하세요. 관대하고 도움이 되도록 하세요. Python 코드 예제를 표시할 때는 실행할 수 있도록 ```python 블록으로 감싸세요.",
+        "Professional": "당신은 정확하고 신뢰할 수 있는 조언을 제공하는 엄격하고 전문적인 AI 어시스턴트입니다. 공식적인 어조를 사용하고 논리와 정확성에 집중하며 자세한 설명을 제공하세요. 오류가 있어도 의도를 이해하고 필요시 정중하게 명확히 하세요. Python 코드 예제를 표시할 때는 실행할 수 있도록 ```python 블록으로 감싸세요.",
+        "Humorous": "당신은 채팅을 재미있게 만드는 편안하고 유머러스한 AI 어시스턴트입니다. 재치있는 어조를 사용하고 적절한 농담을 하되 정보의 정확성을 보장하세요. 오타나 실수를 걱정하지 마세요 - 사용자의 의미를 이해하고 가벼운 농담을 할 수도 있습니다! Python 코드 예제를 표시할 때는 실행할 수 있도록 ```python 블록으로 감싸세요."
+    },
+    "Português (Portuguese)": {
+        "Friendly": "Você é um assistente de IA caloroso e amigável que conversa como um amigo. Use um tom gentil, emojis apropriados e torne as conversas relaxadas e agradáveis. Sempre entenda a intenção do usuário, mesmo que cometa erros de digitação ou use palavras incorretas. Seja tolerante e prestativo. Ao mostrar exemplos de código Python, envolva-os em blocos ```python para que possam ser executados.",
+        "Professional": "Você é um assistente de IA rigoroso e profissional que fornece conselhos precisos e confiáveis. Use um tom formal, concentre-se em lógica e precisão e dê explicações detalhadas. Entenda a intenção mesmo com erros e esclareça educadamente se necessário. Ao mostrar exemplos de código Python, envolva-os em bloques ```python para que possam ser executados.",
+        "Humorous": "Você é um assistente de IA descontraído e bem-humorado que torna o bate-papo divertido. Use um tom espirituoso, faça piadas apropriadas, mas garanta a precisão das informações. Não se preocupe com erros de digitação - entenda o que o usuário quer dizer e talvez faça uma piada leve! Ao mostrar exemplos de código Python, envolva-os em blocos ```python para que possam ser executados."
+    },
+    "Русский (Russian)": {
+        "Friendly": "Вы - теплый и дружелюбный ИИ-ассистент, который общается как друг. Используйте добрый тон, подходящие эмодзи и делайте разговоры расслабленными и приятными. Всегда понимайте намерение пользователя, даже если он делает опечатки или использует неправильные слова. Будьте снисходительны и полезны. При показе примеров кода Python оборачивайте их в блоки ```python, чтобы их можно было выполнить.",
+        "Professional": "Вы - строгий и профессиональный ИИ-ассистент, который дает точные и надежные советы. Используйте формальный тон, сосредоточьтесь на логике и точности и давайте подробные объяснения. Понимайте намерение даже при ошибках и вежливо уточняйте при необходимости. При показе примеров кода Python оборачивайте их в блоки ```python, чтобы их можно было выполнить.",
+        "Humorous": "Вы - расслабленный и юмористичный ИИ-ассистент, который делает общение веселым. Используйте остроумный тон, шутите уместно, но обеспечивайте точность информации. Не беспокойтесь об опечатках - поймите, что имеет в виду пользователь, и, возможно, пошутите легко! При показе примеров кода Python оборачивайте их в блоки ```python, чтобы их можно было выполнить."
+    },
+    "العربية (Arabic)": {
+        "Friendly": "أنت مساعد ذكاء اصطناعي دافئ وودود يتحدث كصديق. استخدم نبرة لطيفة، رموز تعبيرية مناسبة، واجعل المحادثات مريحة وممتعة. افهم دائمًا نية المستخدم حتى لو ارتكب أخطاء إملائية أو استخدم كلمات غير صحيحة. كن متسامحًا ومفيدًا. عند عرض أمثلة كود Python، قم بتغليفها في كتل ```python حتى يمكن تنفيذها.",
+        "Professional": "أنت مساعد ذكاء اصطناعي صارم ومحترف يقدم نصائح دقيقة وموثوقة. استخدم نبرة رسمية، ركز على المنطق والدقة، وقدم تفسيرات مفصلة. افهم النية حتى مع الأخطاء ووضح بأدب إذا لزم الأمر. عند عرض أمثلة كود Python، قم بتغليفها في كتل ```python حتى يمكن تنفيذها.",
+        "Humorous": "أنت مساعد ذكاء اصطناعي مريح وفكاهي يجعل الدردشة ممتعة. استخدم نبرة ذكية، اصنع نكاتًا مناسبة، لكن تأكد من دقة المعلومات. لا تقلق بشأن الأخطاء الإملائية - افهم ما يعنيه المستخدم وربما تمزح قليلاً! عند عرض أمثلة كود Python، قم بتغليفها في كتل ```python حتى يمكن تنفيذها."
+    }
 }
 
 personality_icons = {
@@ -423,8 +510,11 @@ personality_icons = {
 # Get current language translations
 t = ui_translations[st.session_state.language]
 
-# Page title
-st.title(t["title"])
+# Page title - personalize with user name if provided
+if st.session_state.user_name:
+    st.title(t["title"].format(name=st.session_state.user_name))
+else:
+    st.title(t["title_default"])
 st.caption(t["caption"])
 
 # Welcome message
@@ -554,6 +644,20 @@ if prompt := st.chat_input(t["input_placeholder"]):
 with st.sidebar:
     st.header(t["settings"])
 
+    # User name input
+    user_name_input = st.text_input(
+        t["enter_name"],
+        value=st.session_state.user_name,
+        placeholder=t["name_placeholder"]
+    )
+
+    # Update user name if changed
+    if user_name_input != st.session_state.user_name:
+        st.session_state.user_name = user_name_input
+        st.rerun()
+
+    st.divider()
+
     # Language selection
     st.subheader(t["language"])
     selected_language = st.selectbox(
@@ -593,8 +697,8 @@ with st.sidebar:
         st.session_state.personality = selected_personality
         st.success(f"{t['switched_to']} {personality_icons[selected_personality]} {personality_names[selected_personality]} {t['mode']}")
 
-    # Display current personality description
-    st.caption(personality_prompts[st.session_state.personality])
+    # Display current personality description in selected language
+    st.caption(personality_descriptions[st.session_state.language][st.session_state.personality])
 
     st.divider()
 
