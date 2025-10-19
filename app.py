@@ -32,6 +32,9 @@ if "language" not in st.session_state:
 if "user_name" not in st.session_state:
     st.session_state.user_name = ""
 
+if "signed_in" not in st.session_state:
+    st.session_state.signed_in = False
+
 # Language instruction templates and UI translations
 language_instructions = {
     "English": "Respond in English.",
@@ -54,6 +57,10 @@ ui_translations = {
         "caption": "Your versatile AI assistant - talk about literally anything",
         "enter_name": "Enter your name:",
         "name_placeholder": "Your name",
+        "signin_title": "🔐 Sign In",
+        "signin_welcome": "Welcome! Please enter your name to continue",
+        "signin_button": "Sign In",
+        "signout_button": "Sign Out",
         "welcome": "👋 Welcome! I'm your Everything AI Assistant. I can discuss any topic with you: learning, work, life, entertainment, technology, arts, and more. Whatever you want to chat about, I'm here to help!",
         "settings": "⚙️ Settings",
         "language": "🌐 Language",
@@ -93,6 +100,10 @@ ui_translations = {
         "caption": "您的多功能 AI 助手 - 无所不谈",
         "enter_name": "输入您的名字：",
         "name_placeholder": "您的名字",
+        "signin_title": "🔐 登录",
+        "signin_welcome": "欢迎！请输入您的名字以继续",
+        "signin_button": "登录",
+        "signout_button": "退出登录",
         "welcome": "👋 欢迎！我是您的万能 AI 助手。我可以和您讨论任何话题：学习、工作、生活、娱乐、科技、艺术等等。无论您想聊什么，我都乐意奉陪！",
         "settings": "⚙️ 设置",
         "language": "🌐 语言",
@@ -132,6 +143,10 @@ ui_translations = {
         "caption": "Tu asistente AI versátil - habla de literalmente cualquier cosa",
         "enter_name": "Ingresa tu nombre:",
         "name_placeholder": "Tu nombre",
+        "signin_title": "🔐 Iniciar Sesión",
+        "signin_welcome": "¡Bienvenido! Ingresa tu nombre para continuar",
+        "signin_button": "Iniciar Sesión",
+        "signout_button": "Cerrar Sesión",
         "welcome": "👋 ¡Bienvenido! Soy tu Asistente AI Todoterreno. Puedo discutir cualquier tema contigo: aprendizaje, trabajo, vida, entretenimiento, tecnología, artes y más. ¡Lo que quieras hablar, estoy aquí para ayudar!",
         "settings": "⚙️ Configuración",
         "language": "🌐 Idioma",
@@ -171,6 +186,10 @@ ui_translations = {
         "caption": "Votre assistant AI polyvalent - parlez de n'importe quoi",
         "enter_name": "Entrez votre nom:",
         "name_placeholder": "Votre nom",
+        "signin_title": "🔐 Connexion",
+        "signin_welcome": "Bienvenue! Entrez votre nom pour continuer",
+        "signin_button": "Se Connecter",
+        "signout_button": "Se Déconnecter",
         "welcome": "👋 Bienvenue! Je suis votre Assistant AI Polyvalent. Je peux discuter de n'importe quel sujet avec vous: apprentissage, travail, vie, divertissement, technologie, arts et plus. Quoi que vous vouliez discuter, je suis là pour vous aider!",
         "settings": "⚙️ Paramètres",
         "language": "🌐 Langue",
@@ -210,6 +229,10 @@ ui_translations = {
         "caption": "Ihr vielseitiger AI-Assistent - sprechen Sie über buchstäblich alles",
         "enter_name": "Geben Sie Ihren Namen ein:",
         "name_placeholder": "Ihr Name",
+        "signin_title": "🔐 Anmelden",
+        "signin_welcome": "Willkommen! Geben Sie Ihren Namen ein, um fortzufahren",
+        "signin_button": "Anmelden",
+        "signout_button": "Abmelden",
         "welcome": "👋 Willkommen! Ich bin Ihr Alleskönner AI-Assistent. Ich kann mit Ihnen über jedes Thema sprechen: Lernen, Arbeit, Leben, Unterhaltung, Technologie, Kunst und mehr. Worüber Sie auch sprechen möchten, ich bin hier, um zu helfen!",
         "settings": "⚙️ Einstellungen",
         "language": "🌐 Sprache",
@@ -249,6 +272,10 @@ ui_translations = {
         "caption": "あなたの多用途AIアシスタント - 文字通り何でも話せます",
         "enter_name": "名前を入力：",
         "name_placeholder": "あなたの名前",
+        "signin_title": "🔐 サインイン",
+        "signin_welcome": "ようこそ！続行するには名前を入力してください",
+        "signin_button": "サインイン",
+        "signout_button": "サインアウト",
         "welcome": "👋 ようこそ！私はあなたの万能AIアシスタントです。学習、仕事、生活、娯楽、技術、芸術など、あらゆるトピックについて話し合うことができます。何を話したくても、お手伝いします！",
         "settings": "⚙️ 設定",
         "language": "🌐 言語",
@@ -288,6 +315,10 @@ ui_translations = {
         "caption": "당신의 다재다능한 AI 어시스턴트 - 문자 그대로 모든 것에 대해 이야기하세요",
         "enter_name": "이름을 입력하세요:",
         "name_placeholder": "당신의 이름",
+        "signin_title": "🔐 로그인",
+        "signin_welcome": "환영합니다! 계속하려면 이름을 입력하세요",
+        "signin_button": "로그인",
+        "signout_button": "로그아웃",
         "welcome": "👋 환영합니다! 저는 당신의 만능 AI 어시스턴트입니다. 학습, 업무, 생활, 엔터테인먼트, 기술, 예술 등 모든 주제에 대해 토론할 수 있습니다. 무엇을 이야기하고 싶든, 도와드리겠습니다!",
         "settings": "⚙️ 설정",
         "language": "🌐 언어",
@@ -327,6 +358,10 @@ ui_translations = {
         "caption": "Seu assistente AI versátil - fale sobre literalmente qualquer coisa",
         "enter_name": "Digite seu nome:",
         "name_placeholder": "Seu nome",
+        "signin_title": "🔐 Entrar",
+        "signin_welcome": "Bem-vindo! Digite seu nome para continuar",
+        "signin_button": "Entrar",
+        "signout_button": "Sair",
         "welcome": "👋 Bem-vindo! Sou seu Assistente AI Versátil. Posso discutir qualquer tópico com você: aprendizado, trabalho, vida, entretenimento, tecnologia, artes e muito mais. Seja qual for o assunto, estou aqui para ajudar!",
         "settings": "⚙️ Configurações",
         "language": "🌐 Idioma",
@@ -366,6 +401,10 @@ ui_translations = {
         "caption": "Ваш универсальный AI ассистент - говорите буквально о чем угодно",
         "enter_name": "Введите ваше имя:",
         "name_placeholder": "Ваше имя",
+        "signin_title": "🔐 Вход",
+        "signin_welcome": "Добро пожаловать! Введите ваше имя, чтобы продолжить",
+        "signin_button": "Войти",
+        "signout_button": "Выйти",
         "welcome": "👋 Добро пожаловать! Я ваш Универсальный AI Ассистент. Я могу обсудить с вами любую тему: обучение, работу, жизнь, развлечения, технологии, искусство и многое другое. О чем бы вы ни хотели поговорить, я здесь, чтобы помочь!",
         "settings": "⚙️ Настройки",
         "language": "🌐 Язык",
@@ -405,6 +444,10 @@ ui_translations = {
         "caption": "مساعدك الذكي المتعدد الاستخدامات - تحدث عن أي شيء حرفياً",
         "enter_name": "أدخل اسمك:",
         "name_placeholder": "اسمك",
+        "signin_title": "🔐 تسجيل الدخول",
+        "signin_welcome": "مرحباً! أدخل اسمك للمتابعة",
+        "signin_button": "تسجيل الدخول",
+        "signout_button": "تسجيل الخروج",
         "welcome": "👋 مرحباً! أنا مساعدك الذكي الشامل. يمكنني مناقشة أي موضوع معك: التعلم، العمل، الحياة، الترفيه، التكنولوجيا، الفنون والمزيد. مهما كان ما تريد التحدث عنه، أنا هنا للمساعدة!",
         "settings": "⚙️ الإعدادات",
         "language": "🌐 اللغة",
@@ -510,6 +553,32 @@ personality_icons = {
 # Get current language translations
 t = ui_translations[st.session_state.language]
 
+# Check if user is signed in
+if not st.session_state.signed_in:
+    # Sign-in page
+    st.title(t["signin_title"])
+    st.info(t["signin_welcome"])
+
+    # Center the sign-in form
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        signin_name = st.text_input(
+            t["enter_name"],
+            placeholder=t["name_placeholder"],
+            key="signin_name_input"
+        )
+
+        if st.button(t["signin_button"], type="primary", use_container_width=True):
+            if signin_name.strip():
+                st.session_state.user_name = signin_name.strip()
+                st.session_state.signed_in = True
+                st.rerun()
+            else:
+                st.error("Please enter your name")
+
+    st.stop()
+
+# User is signed in - show main app
 # Page title - personalize with user name if provided
 if st.session_state.user_name:
     st.title(t["title"].format(name=st.session_state.user_name))
@@ -644,16 +713,12 @@ if prompt := st.chat_input(t["input_placeholder"]):
 with st.sidebar:
     st.header(t["settings"])
 
-    # User name input
-    user_name_input = st.text_input(
-        t["enter_name"],
-        value=st.session_state.user_name,
-        placeholder=t["name_placeholder"]
-    )
-
-    # Update user name if changed
-    if user_name_input != st.session_state.user_name:
-        st.session_state.user_name = user_name_input
+    # Display signed-in user and sign-out button
+    st.write(f"👤 **{st.session_state.user_name}**")
+    if st.button(t["signout_button"], use_container_width=True):
+        st.session_state.signed_in = False
+        st.session_state.user_name = ""
+        st.session_state.messages = []
         st.rerun()
 
     st.divider()
