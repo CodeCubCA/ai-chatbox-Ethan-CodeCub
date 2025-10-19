@@ -49,8 +49,8 @@ language_instructions = {
 # UI translations for all languages
 ui_translations = {
     "English": {
-        "title": "💬 {name} Can Do Everything AI GPT",
-        "title_default": "💬 My Can Do Everything AI GPT",
+        "title": "💬 {name}'s Can Do Everything AI Buddy",
+        "title_default": "💬 My Can Do Everything AI Buddy",
         "caption": "Your versatile AI assistant - talk about literally anything",
         "enter_name": "Enter your name:",
         "name_placeholder": "Your name",
@@ -88,8 +88,8 @@ ui_translations = {
         "humorous": "Humorous"
     },
     "中文 (Chinese)": {
-        "title": "💬 {name} 的万能 AI GPT",
-        "title_default": "💬 我的万能 AI GPT",
+        "title": "💬 {name} 的万能 AI 伙伴",
+        "title_default": "💬 我的万能 AI 伙伴",
         "caption": "您的多功能 AI 助手 - 无所不谈",
         "enter_name": "输入您的名字：",
         "name_placeholder": "您的名字",
@@ -127,8 +127,8 @@ ui_translations = {
         "humorous": "幽默型"
     },
     "Español (Spanish)": {
-        "title": "💬 {name} AI GPT Todoterreno",
-        "title_default": "💬 Mi AI GPT Todoterreno",
+        "title": "💬 AI Amigo Todoterreno de {name}",
+        "title_default": "💬 Mi AI Amigo Todoterreno",
         "caption": "Tu asistente AI versátil - habla de literalmente cualquier cosa",
         "enter_name": "Ingresa tu nombre:",
         "name_placeholder": "Tu nombre",
@@ -166,8 +166,8 @@ ui_translations = {
         "humorous": "Divertido"
     },
     "Français (French)": {
-        "title": "💬 {name} AI GPT Polyvalent",
-        "title_default": "💬 Mon AI GPT Polyvalent",
+        "title": "💬 AI Compagnon Polyvalent de {name}",
+        "title_default": "💬 Mon AI Compagnon Polyvalent",
         "caption": "Votre assistant AI polyvalent - parlez de n'importe quoi",
         "enter_name": "Entrez votre nom:",
         "name_placeholder": "Votre nom",
@@ -205,8 +205,8 @@ ui_translations = {
         "humorous": "Humoristique"
     },
     "Deutsch (German)": {
-        "title": "💬 {name}s Alleskönner AI GPT",
-        "title_default": "💬 Mein Alleskönner AI GPT",
+        "title": "💬 {name}s Alleskönner AI Kumpel",
+        "title_default": "💬 Mein Alleskönner AI Kumpel",
         "caption": "Ihr vielseitiger AI-Assistent - sprechen Sie über buchstäblich alles",
         "enter_name": "Geben Sie Ihren Namen ein:",
         "name_placeholder": "Ihr Name",
@@ -244,8 +244,8 @@ ui_translations = {
         "humorous": "Humorvoll"
     },
     "日本語 (Japanese)": {
-        "title": "💬 {name} の万能 AI GPT",
-        "title_default": "💬 私の万能 AI GPT",
+        "title": "💬 {name} の万能 AI 相棒",
+        "title_default": "💬 私の万能 AI 相棒",
         "caption": "あなたの多用途AIアシスタント - 文字通り何でも話せます",
         "enter_name": "名前を入力：",
         "name_placeholder": "あなたの名前",
@@ -283,8 +283,8 @@ ui_translations = {
         "humorous": "ユーモラス"
     },
     "한국어 (Korean)": {
-        "title": "💬 {name}의 만능 AI GPT",
-        "title_default": "💬 나의 만능 AI GPT",
+        "title": "💬 {name}의 만능 AI 친구",
+        "title_default": "💬 나의 만능 AI 친구",
         "caption": "당신의 다재다능한 AI 어시스턴트 - 문자 그대로 모든 것에 대해 이야기하세요",
         "enter_name": "이름을 입력하세요:",
         "name_placeholder": "당신의 이름",
@@ -322,8 +322,8 @@ ui_translations = {
         "humorous": "유머러스"
     },
     "Português (Portuguese)": {
-        "title": "💬 {name} AI GPT Versátil",
-        "title_default": "💬 Meu AI GPT Versátil",
+        "title": "💬 AI Companheiro Versátil de {name}",
+        "title_default": "💬 Meu AI Companheiro Versátil",
         "caption": "Seu assistente AI versátil - fale sobre literalmente qualquer coisa",
         "enter_name": "Digite seu nome:",
         "name_placeholder": "Seu nome",
@@ -361,8 +361,8 @@ ui_translations = {
         "humorous": "Bem-humorado"
     },
     "Русский (Russian)": {
-        "title": "💬 {name} Универсальный AI GPT",
-        "title_default": "💬 Мой Универсальный AI GPT",
+        "title": "💬 Универсальный AI Друг {name}",
+        "title_default": "💬 Мой Универсальный AI Друг",
         "caption": "Ваш универсальный AI ассистент - говорите буквально о чем угодно",
         "enter_name": "Введите ваше имя:",
         "name_placeholder": "Ваше имя",
@@ -400,8 +400,8 @@ ui_translations = {
         "humorous": "Юмористичный"
     },
     "العربية (Arabic)": {
-        "title": "💬 {name} GPT الذكي الشامل",
-        "title_default": "💬 GPT الذكي الشامل الخاص بي",
+        "title": "💬 رفيق الذكاء الاصطناعي الشامل لـ {name}",
+        "title_default": "💬 رفيقي الذكي الشامل",
         "caption": "مساعدك الذكي المتعدد الاستخدامات - تحدث عن أي شيء حرفياً",
         "enter_name": "أدخل اسمك:",
         "name_placeholder": "اسمك",
