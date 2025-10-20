@@ -6,6 +6,25 @@ from io import StringIO
 from groq import Groq
 from dotenv import load_dotenv
 
+# Email validation function
+def is_valid_email(email):
+    """Validate email format"""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+# Password validation function
+def is_valid_password(password):
+    """Validate password: at least 8 characters, 1 uppercase, 1 lowercase, 1 number"""
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters"
+    if not re.search(r'[A-Z]', password):
+        return False, "Password must contain at least 1 uppercase letter"
+    if not re.search(r'[a-z]', password):
+        return False, "Password must contain at least 1 lowercase letter"
+    if not re.search(r'[0-9]', password):
+        return False, "Password must contain at least 1 number"
+    return True, "Password is valid"
+
 # Load environment variables
 load_dotenv()
 
@@ -68,6 +87,13 @@ ui_translations = {
         "signin_welcome": "Welcome! Please create your account to continue",
         "signin_button": "Sign In",
         "signout_button": "Sign Out",
+        "error_all_fields": "Please fill in all fields",
+        "error_invalid_email": "Invalid email format",
+        "error_password_length": "Password must be at least 8 characters",
+        "error_password_uppercase": "Password must contain at least 1 uppercase letter",
+        "error_password_lowercase": "Password must contain at least 1 lowercase letter",
+        "error_password_number": "Password must contain at least 1 number",
+        "password_requirements": "Password must be at least 8 characters with 1 uppercase, 1 lowercase, and 1 number",
         "welcome": "👋 Welcome! I'm your Everything AI Assistant. I can discuss any topic with you: learning, work, life, entertainment, technology, arts, and more. Whatever you want to chat about, I'm here to help!",
         "settings": "⚙️ Settings",
         "language": "🌐 Language",
@@ -115,6 +141,13 @@ ui_translations = {
         "signin_welcome": "欢迎！请创建您的账户以继续",
         "signin_button": "登录",
         "signout_button": "退出登录",
+        "error_all_fields": "请填写所有字段",
+        "error_invalid_email": "邮箱格式无效",
+        "error_password_length": "密码至少需要8个字符",
+        "error_password_uppercase": "密码必须包含至少1个大写字母",
+        "error_password_lowercase": "密码必须包含至少1个小写字母",
+        "error_password_number": "密码必须包含至少1个数字",
+        "password_requirements": "密码必须至少8个字符，包含1个大写字母、1个小写字母和1个数字",
         "welcome": "👋 欢迎！我是您的万能 AI 助手。我可以和您讨论任何话题：学习、工作、生活、娱乐、科技、艺术等等。无论您想聊什么，我都乐意奉陪！",
         "settings": "⚙️ 设置",
         "language": "🌐 语言",
@@ -621,17 +654,36 @@ if not st.session_state.signed_in:
             t["enter_password"],
             placeholder=t["password_placeholder"],
             type="password",
-            key="signin_password_input"
+            key="signin_password_input",
+            help=t["password_requirements"]
         )
 
         if st.button(t["signin_button"], type="primary", use_container_width=True):
-            if signin_name.strip() and signin_email.strip() and signin_password.strip():
-                st.session_state.user_name = signin_name.strip()
-                st.session_state.user_email = signin_email.strip()
-                st.session_state.signed_in = True
-                st.rerun()
+            # Check if all fields are filled
+            if not signin_name.strip() or not signin_email.strip() or not signin_password.strip():
+                st.error(t["error_all_fields"])
+            # Validate email format
+            elif not is_valid_email(signin_email.strip()):
+                st.error(t["error_invalid_email"])
+            # Validate password
             else:
-                st.error("Please fill in all fields")
+                is_valid, error_msg = is_valid_password(signin_password)
+                if not is_valid:
+                    # Show specific password error
+                    if "8 characters" in error_msg:
+                        st.error(t["error_password_length"])
+                    elif "uppercase" in error_msg:
+                        st.error(t["error_password_uppercase"])
+                    elif "lowercase" in error_msg:
+                        st.error(t["error_password_lowercase"])
+                    elif "number" in error_msg:
+                        st.error(t["error_password_number"])
+                else:
+                    # All validations passed
+                    st.session_state.user_name = signin_name.strip()
+                    st.session_state.user_email = signin_email.strip()
+                    st.session_state.signed_in = True
+                    st.rerun()
 
     st.stop()
 
