@@ -57,6 +57,9 @@ if "user_email" not in st.session_state:
 if "signed_in" not in st.session_state:
     st.session_state.signed_in = False
 
+if "show_help" not in st.session_state:
+    st.session_state.show_help = False
+
 # Language instruction templates and UI translations
 language_instructions = {
     "English": "Respond in English.",
@@ -825,11 +828,17 @@ with st.sidebar:
     # Display signed-in user and sign-out button
     st.write(f"👤 **{st.session_state.user_name}**")
     st.write(f"📧 {st.session_state.user_email}")
-    if st.button(t["signout_button"], use_container_width=True):
+    if st.button(t["signout_button"], use_container_width=True, key="signout_btn"):
+        # Clear all session state
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        # Reinitialize essential states
         st.session_state.signed_in = False
         st.session_state.user_name = ""
         st.session_state.user_email = ""
         st.session_state.messages = []
+        st.session_state.personality = "Friendly"
+        st.session_state.language = "English"
         st.rerun()
 
     st.divider()
@@ -894,6 +903,18 @@ with st.sidebar:
 
     st.divider()
 
-    # Usage instructions
-    st.subheader(t["how_to_use"])
-    st.markdown(t["instructions"])
+    # Usage instructions - Help button with dialog
+    if st.button("❓ " + t["how_to_use"], use_container_width=True):
+        # This will be handled by a dialog
+        st.session_state.show_help = True
+
+# Help dialog - must be defined outside sidebar
+if st.session_state.show_help:
+    @st.dialog(t["how_to_use"])
+    def show_help_dialog():
+        st.markdown(t["instructions"])
+        if st.button("Close", use_container_width=True):
+            st.session_state.show_help = False
+            st.rerun()
+
+    show_help_dialog()
