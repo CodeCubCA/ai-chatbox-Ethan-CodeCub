@@ -64,6 +64,9 @@ if "show_help" not in st.session_state:
 if "profile_photo" not in st.session_state:
     st.session_state.profile_photo = None
 
+if "ai_avatar" not in st.session_state:
+    st.session_state.ai_avatar = None
+
 # Language instruction templates and UI translations
 language_instructions = {
     "English": "Respond in English.",
@@ -763,7 +766,11 @@ def extract_and_run_code(text):
 
 # Display chat history
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
+    avatar = None
+    if message["role"] == "assistant" and st.session_state.ai_avatar is not None:
+        avatar = st.session_state.ai_avatar
+
+    with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
 
         # If assistant message contains code, show run button
@@ -791,7 +798,8 @@ if prompt := st.chat_input(t["input_placeholder"]):
         st.markdown(prompt)
 
     # Display assistant reply
-    with st.chat_message("assistant"):
+    avatar = st.session_state.ai_avatar if st.session_state.ai_avatar is not None else None
+    with st.chat_message("assistant", avatar=avatar):
         message_placeholder = st.empty()
         full_response = ""
 
@@ -878,6 +886,33 @@ with st.sidebar:
         st.session_state.personality = "Friendly"
         st.session_state.language = "English"
         st.rerun()
+
+    st.divider()
+
+    # AI Avatar customization
+    st.subheader("🤖 AI Assistant Avatar")
+    ai_avatar_upload = st.file_uploader("Change AI avatar", type=["png", "jpg", "jpeg"], label_visibility="collapsed", key="ai_avatar_upload")
+    if ai_avatar_upload is not None:
+        # Optimize image: resize and compress
+        img = Image.open(ai_avatar_upload)
+        img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+        if img.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+            img = background
+        buffer = BytesIO()
+        img.save(buffer, format='JPEG', quality=85, optimize=True)
+        buffer.seek(0)
+        st.session_state.ai_avatar = buffer
+        st.rerun()
+
+    # Preview AI avatar
+    if st.session_state.ai_avatar is not None:
+        col_preview1, col_preview2 = st.columns([1, 2])
+        with col_preview1:
+            st.image(st.session_state.ai_avatar, width=60)
+        with col_preview2:
+            st.caption("Current AI avatar")
 
     st.divider()
 
