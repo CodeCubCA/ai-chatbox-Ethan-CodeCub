@@ -2,9 +2,10 @@ import streamlit as st
 import os
 import re
 import sys
-from io import StringIO
+from io import StringIO, BytesIO
 from groq import Groq
 from dotenv import load_dotenv
+from PIL import Image
 
 # Email validation function
 def is_valid_email(email):
@@ -850,7 +851,20 @@ with st.sidebar:
     # Photo upload button
     uploaded_file = st.file_uploader("Change profile photo", type=["png", "jpg", "jpeg"], label_visibility="collapsed", key="profile_upload")
     if uploaded_file is not None:
-        st.session_state.profile_photo = uploaded_file
+        # Optimize image: resize and compress
+        img = Image.open(uploaded_file)
+        # Resize to max 200x200 to reduce file size
+        img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+        # Convert to RGB if necessary (for JPEG)
+        if img.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+            img = background
+        # Save optimized image to BytesIO
+        buffer = BytesIO()
+        img.save(buffer, format='JPEG', quality=85, optimize=True)
+        buffer.seek(0)
+        st.session_state.profile_photo = buffer
         st.rerun()
     if st.button(t["signout_button"], use_container_width=True, key="signout_btn"):
         # Clear all session state
