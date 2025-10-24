@@ -891,28 +891,74 @@ with st.sidebar:
 
     # AI Avatar customization
     st.subheader("🤖 AI Assistant Avatar")
-    ai_avatar_upload = st.file_uploader("Change AI avatar", type=["png", "jpg", "jpeg"], label_visibility="collapsed", key="ai_avatar_upload")
-    if ai_avatar_upload is not None:
-        # Optimize image: resize and compress
-        img = Image.open(ai_avatar_upload)
-        img.thumbnail((200, 200), Image.Resampling.LANCZOS)
-        if img.mode in ('RGBA', 'LA', 'P'):
-            background = Image.new('RGB', img.size, (255, 255, 255))
-            background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
-            img = background
-        buffer = BytesIO()
-        img.save(buffer, format='JPEG', quality=85, optimize=True)
-        buffer.seek(0)
-        st.session_state.ai_avatar = buffer
-        st.rerun()
+
+    # Cartoon character options
+    avatar_characters = {
+        "🤖 Robot": "🤖",
+        "🐱 Cat": "🐱",
+        "🐶 Dog": "🐶",
+        "🦊 Fox": "🦊",
+        "🐼 Panda": "🐼",
+        "🐨 Koala": "🐨",
+        "🦁 Lion": "🦁",
+        "🐯 Tiger": "🐯",
+        "🐸 Frog": "🐸",
+        "🐵 Monkey": "🐵",
+        "🦉 Owl": "🦉",
+        "🦄 Unicorn": "🦄",
+        "🐲 Dragon": "🐲",
+        "👽 Alien": "👽",
+        "🎃 Pumpkin": "🎃",
+        "⭐ Star": "⭐"
+    }
+
+    # Avatar selection method
+    avatar_method = st.radio(
+        "Choose avatar method:",
+        ["Cartoon Characters", "Upload Custom Image"],
+        horizontal=True,
+        label_visibility="collapsed"
+    )
+
+    if avatar_method == "Cartoon Characters":
+        # Display character selection in a grid
+        selected_character = st.selectbox(
+            "Select a character:",
+            options=list(avatar_characters.keys()),
+            format_func=lambda x: x,
+            key="character_select"
+        )
+
+        if st.button("Apply Character", use_container_width=True):
+            st.session_state.ai_avatar = avatar_characters[selected_character]
+            st.rerun()
+
+    else:
+        # Upload custom image
+        ai_avatar_upload = st.file_uploader("Upload your AI avatar", type=["png", "jpg", "jpeg"], key="ai_avatar_upload")
+        if ai_avatar_upload is not None:
+            # Optimize image: resize and compress
+            img = Image.open(ai_avatar_upload)
+            img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+            if img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+                img = background
+            buffer = BytesIO()
+            img.save(buffer, format='JPEG', quality=85, optimize=True)
+            buffer.seek(0)
+            st.session_state.ai_avatar = buffer
+            st.rerun()
 
     # Preview AI avatar
     if st.session_state.ai_avatar is not None:
-        col_preview1, col_preview2 = st.columns([1, 2])
-        with col_preview1:
-            st.image(st.session_state.ai_avatar, width=60)
-        with col_preview2:
-            st.caption("Current AI avatar")
+        st.write("**Current AI Avatar:**")
+        if isinstance(st.session_state.ai_avatar, str):
+            # It's an emoji character
+            st.markdown(f"<p style='font-size: 48px; margin: 0;'>{st.session_state.ai_avatar}</p>", unsafe_allow_html=True)
+        else:
+            # It's an uploaded image
+            st.image(st.session_state.ai_avatar, width=80)
 
     st.divider()
 
