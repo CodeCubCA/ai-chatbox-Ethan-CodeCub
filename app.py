@@ -60,6 +60,9 @@ if "signed_in" not in st.session_state:
 if "show_help" not in st.session_state:
     st.session_state.show_help = False
 
+if "profile_photo" not in st.session_state:
+    st.session_state.profile_photo = None
+
 # Language instruction templates and UI translations
 language_instructions = {
     "English": "Respond in English.",
@@ -832,9 +835,23 @@ if prompt := st.chat_input(t["input_placeholder"]):
 with st.sidebar:
     st.header(t["settings"])
 
-    # Display signed-in user and sign-out button
-    st.write(f"👤 **{st.session_state.user_name}**")
-    st.write(f"📧 {st.session_state.user_email}")
+    # Display profile photo with upload option
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        if st.session_state.profile_photo is not None:
+            st.image(st.session_state.profile_photo, width=80)
+        else:
+            st.markdown("<p style='font-size: 60px; margin: 0; padding: 0;'>👤</p>", unsafe_allow_html=True)
+
+    with col2:
+        st.write(f"**{st.session_state.user_name}**")
+        st.write(f"{st.session_state.user_email}")
+
+    # Photo upload button
+    uploaded_file = st.file_uploader("Change profile photo", type=["png", "jpg", "jpeg"], label_visibility="collapsed", key="profile_upload")
+    if uploaded_file is not None:
+        st.session_state.profile_photo = uploaded_file
+        st.rerun()
     if st.button(t["signout_button"], use_container_width=True, key="signout_btn"):
         # Clear all session state
         for key in list(st.session_state.keys()):
