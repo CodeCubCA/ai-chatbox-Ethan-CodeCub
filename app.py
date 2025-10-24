@@ -691,12 +691,19 @@ if not st.session_state.signed_in:
     st.stop()
 
 # User is signed in - show main app
-# Page title - personalize with user name if provided
-if st.session_state.user_name:
-    st.title(t["title"].format(name=st.session_state.user_name))
-else:
-    st.title(t["title_default"])
-st.caption(t["caption"])
+# Page title with help button in top right corner
+col_title, col_help = st.columns([6, 1])
+with col_title:
+    # Page title - personalize with user name if provided
+    if st.session_state.user_name:
+        st.title(t["title"].format(name=st.session_state.user_name))
+    else:
+        st.title(t["title_default"])
+    st.caption(t["caption"])
+with col_help:
+    st.write("")  # Add spacing
+    if st.button("❓", key="help_button_top", help=t["how_to_use"]):
+        st.session_state.show_help = True
 
 # Welcome message
 st.info(t["welcome"])
@@ -901,12 +908,6 @@ with st.sidebar:
     st.write(f"**{t['personality']}**: {personality_icons[st.session_state.personality]} {personality_names[st.session_state.personality]}")
     st.write(f"**{t['messages']}**: {len(st.session_state.messages)}")
 
-    st.divider()
-
-    # Usage instructions - Help button with dialog
-    if st.button("❓ " + t["how_to_use"], use_container_width=True):
-        # This will be handled by a dialog
-        st.session_state.show_help = True
 
 # Help dialog - must be defined outside sidebar
 if st.session_state.show_help:
