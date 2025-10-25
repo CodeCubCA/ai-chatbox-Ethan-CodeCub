@@ -950,15 +950,22 @@ with st.sidebar:
             st.session_state.ai_avatar = buffer
             st.rerun()
 
-    # Preview AI avatar
+    # Preview AI avatar in a nice display
     if st.session_state.ai_avatar is not None:
-        st.write("**Current AI Avatar:**")
-        if isinstance(st.session_state.ai_avatar, str):
-            # It's an emoji character
-            st.markdown(f"<p style='font-size: 48px; margin: 0;'>{st.session_state.ai_avatar}</p>", unsafe_allow_html=True)
-        else:
-            # It's an uploaded image
-            st.image(st.session_state.ai_avatar, width=80)
+        col_av1, col_av2 = st.columns([1, 2])
+        with col_av1:
+            if isinstance(st.session_state.ai_avatar, str):
+                # It's an emoji character - display large
+                st.markdown(f"<div style='background-color: #f0f2f6; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px;'>{st.session_state.ai_avatar}</div>", unsafe_allow_html=True)
+            else:
+                # It's an uploaded image
+                st.image(st.session_state.ai_avatar, width=80)
+        with col_av2:
+            st.write("**Current Avatar**")
+            if isinstance(st.session_state.ai_avatar, str):
+                st.caption("Emoji character")
+            else:
+                st.caption("Custom image")
 
     st.divider()
 
