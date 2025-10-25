@@ -848,32 +848,75 @@ with st.sidebar:
     col1, col2 = st.columns([1, 2])
     with col1:
         if st.session_state.profile_photo is not None:
-            st.image(st.session_state.profile_photo, width=80)
+            if isinstance(st.session_state.profile_photo, str):
+                # It's an emoji character
+                st.markdown(f"<div style='background-color: #f0f2f6; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px;'>{st.session_state.profile_photo}</div>", unsafe_allow_html=True)
+            else:
+                # It's an uploaded image
+                st.image(st.session_state.profile_photo, width=80)
         else:
-            st.markdown("<p style='font-size: 60px; margin: 0; padding: 0;'>👤</p>", unsafe_allow_html=True)
+            st.markdown("<div style='background-color: #f0f2f6; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px;'>👤</div>", unsafe_allow_html=True)
 
     with col2:
         st.write(f"**{st.session_state.user_name}**")
         st.write(f"{st.session_state.user_email}")
 
-    # Photo upload button
-    uploaded_file = st.file_uploader("Change profile photo", type=["png", "jpg", "jpeg"], label_visibility="collapsed", key="profile_upload")
-    if uploaded_file is not None:
-        # Optimize image: resize and compress
-        img = Image.open(uploaded_file)
-        # Resize to max 200x200 to reduce file size
-        img.thumbnail((200, 200), Image.Resampling.LANCZOS)
-        # Convert to RGB if necessary (for JPEG)
-        if img.mode in ('RGBA', 'LA', 'P'):
-            background = Image.new('RGB', img.size, (255, 255, 255))
-            background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
-            img = background
-        # Save optimized image to BytesIO
-        buffer = BytesIO()
-        img.save(buffer, format='JPEG', quality=85, optimize=True)
-        buffer.seek(0)
-        st.session_state.profile_photo = buffer
-        st.rerun()
+    # Profile avatar characters
+    profile_characters = {
+        "👤 Default": "👤",
+        "😊 Happy": "😊",
+        "😎 Cool": "😎",
+        "🤓 Nerd": "🤓",
+        "🥳 Party": "🥳",
+        "🤠 Cowboy": "🤠",
+        "🧑‍💻 Developer": "🧑‍💻",
+        "🧑‍🎨 Artist": "🧑‍🎨",
+        "🧑‍🚀 Astronaut": "🧑‍🚀",
+        "🧙 Wizard": "🧙",
+        "🦸 Superhero": "🦸",
+        "🧛 Vampire": "🧛",
+        "🧚 Fairy": "🧚",
+        "👨‍🎓 Graduate": "👨‍🎓",
+        "👑 Royalty": "👑"
+    }
+
+    # Profile photo selection method
+    profile_method = st.radio(
+        "Choose profile photo method:",
+        ["Cartoon Characters", "Upload Custom Image"],
+        horizontal=True,
+        key="profile_method_radio"
+    )
+
+    if profile_method == "Cartoon Characters":
+        # Display character selection
+        selected_profile_char = st.selectbox(
+            "Select your character:",
+            options=list(profile_characters.keys()),
+            format_func=lambda x: x,
+            key="profile_character_select"
+        )
+
+        if st.button("Apply Profile Character", use_container_width=True, key="apply_profile_char"):
+            st.session_state.profile_photo = profile_characters[selected_profile_char]
+            st.rerun()
+
+    else:
+        # Upload custom image
+        uploaded_file = st.file_uploader("Upload your profile photo", type=["png", "jpg", "jpeg"], key="profile_upload")
+        if uploaded_file is not None:
+            # Optimize image: resize and compress
+            img = Image.open(uploaded_file)
+            img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+            if img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+                img = background
+            buffer = BytesIO()
+            img.save(buffer, format='JPEG', quality=85, optimize=True)
+            buffer.seek(0)
+            st.session_state.profile_photo = buffer
+            st.rerun()
     if st.button(t["signout_button"], use_container_width=True, key="signout_btn"):
         # Clear all session state
         for key in list(st.session_state.keys()):
