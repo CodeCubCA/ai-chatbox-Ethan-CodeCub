@@ -817,12 +817,21 @@ with col_img:
         accept_multiple_files=False
     )
     if uploaded_image is not None:
-        st.session_state.uploaded_images.append(uploaded_image)
-        st.rerun()
+        # Only add if not already in the list (avoid duplicates)
+        if uploaded_image not in st.session_state.uploaded_images:
+            st.session_state.uploaded_images.append(uploaded_image)
+            st.rerun()
 
     # Display preview of uploaded images
     if st.session_state.uploaded_images:
-        st.write(f"**Ready to send ({len(st.session_state.uploaded_images)}):**")
+        col_title, col_clear = st.columns([2, 1])
+        with col_title:
+            st.write(f"**Ready to send ({len(st.session_state.uploaded_images)}):**")
+        with col_clear:
+            if st.button("Clear All", key="clear_all_images"):
+                st.session_state.uploaded_images = []
+                st.rerun()
+
         for i, img in enumerate(st.session_state.uploaded_images):
             col_prev, col_del = st.columns([3, 1])
             with col_prev:
