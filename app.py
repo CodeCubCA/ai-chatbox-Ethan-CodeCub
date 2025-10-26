@@ -35,7 +35,7 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 # Set page configuration
 st.set_page_config(
     page_title="My Can Do Everything AI Assistant",
-    page_icon="💬",
+    page_icon="🤖",
     layout="centered"
 )
 
