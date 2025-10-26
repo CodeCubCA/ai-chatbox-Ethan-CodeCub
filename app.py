@@ -807,20 +807,33 @@ for message in st.session_state.messages:
                             st.code(result['error'])
 
 # Image upload section - beside chat input area
-col1, col2, col3 = st.columns([1, 8, 1])
-with col1:
-    uploaded_image = st.file_uploader("📷 Upload", type=["png", "jpg", "jpeg"], key="chat_image_upload")
+col_img, col_chat = st.columns([2, 8])
+with col_img:
+    st.write("**📷 Upload Images**")
+    uploaded_image = st.file_uploader(
+        "Drag and drop images here",
+        type=["png", "jpg", "jpeg"],
+        key="chat_image_upload",
+        accept_multiple_files=False
+    )
     if uploaded_image is not None:
         st.session_state.uploaded_images.append(uploaded_image)
         st.rerun()
 
-# Display preview of uploaded images
-if st.session_state.uploaded_images:
-    st.write("**Images to send:**")
-    cols = st.columns(len(st.session_state.uploaded_images))
-    for i, img in enumerate(st.session_state.uploaded_images):
-        with cols[i]:
-            st.image(img, width=100)
+    # Display preview of uploaded images
+    if st.session_state.uploaded_images:
+        st.write(f"**Ready to send ({len(st.session_state.uploaded_images)}):**")
+        for i, img in enumerate(st.session_state.uploaded_images):
+            col_prev, col_del = st.columns([3, 1])
+            with col_prev:
+                st.image(img, width=150)
+            with col_del:
+                if st.button("❌", key=f"del_img_{i}"):
+                    st.session_state.uploaded_images.pop(i)
+                    st.rerun()
+
+with col_chat:
+    st.write("")  # Spacing
 
 # User input
 prompt = st.chat_input(t["input_placeholder"])
