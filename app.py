@@ -670,14 +670,26 @@ if not st.session_state.signed_in:
         st.write(t["enter_password"])
         col_pwd, col_eye = st.columns([10, 1])
         with col_pwd:
-            signin_password = st.text_input(
-                t["enter_password"],
-                placeholder=t["password_placeholder"],
-                type="text" if st.session_state.show_password else "password",
-                key="signin_password_input",
-                help=t["password_requirements"],
-                label_visibility="collapsed"
-            )
+            if st.session_state.show_password:
+                # Show password as plain text
+                signin_password = st.text_input(
+                    t["enter_password"],
+                    placeholder=t["password_placeholder"],
+                    type="default",
+                    key="signin_password_input",
+                    help=t["password_requirements"],
+                    label_visibility="collapsed"
+                )
+            else:
+                # Show password as hidden dots
+                signin_password = st.text_input(
+                    t["enter_password"],
+                    placeholder=t["password_placeholder"],
+                    type="password",
+                    key="signin_password_input",
+                    help=t["password_requirements"],
+                    label_visibility="collapsed"
+                )
         with col_eye:
             # Toggle button - shows current state (what password IS now)
             if st.session_state.show_password:
