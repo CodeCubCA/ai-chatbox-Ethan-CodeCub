@@ -967,23 +967,17 @@ with st.sidebar:
     )
 
     if avatar_method == "Cartoon Characters":
-        st.write("**Select your AI character:**")
+        # Display character selection
+        selected_ai_char = st.selectbox(
+            "Select AI character:",
+            options=list(avatar_characters.keys()),
+            format_func=lambda x: x,
+            key="ai_character_select"
+        )
 
-        # Display characters in a grid layout
-        cols_per_row = 4
-        characters = list(avatar_characters.items())
-
-        for i in range(0, len(characters), cols_per_row):
-            cols = st.columns(cols_per_row)
-            for j, col in enumerate(cols):
-                if i + j < len(characters):
-                    name, emoji = characters[i + j]
-                    with col:
-                        # Create a button for each character
-                        if st.button(emoji, key=f"ai_char_{i}_{j}", use_container_width=True):
-                            st.session_state.ai_avatar = emoji
-                            st.rerun()
-                        st.caption(name.split(" ", 1)[1] if " " in name else name, unsafe_allow_html=True)
+        if st.button("Apply AI Character", use_container_width=True, key="apply_ai_char"):
+            st.session_state.ai_avatar = avatar_characters[selected_ai_char]
+            st.rerun()
 
     else:
         # Upload custom image
