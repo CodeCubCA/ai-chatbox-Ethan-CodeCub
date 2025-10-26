@@ -806,16 +806,27 @@ for message in st.session_state.messages:
                             st.error(t["error_label"])
                             st.code(result['error'])
 
-# Image upload section
-col_upload, col_input = st.columns([1, 5])
-with col_upload:
-    uploaded_image = st.file_uploader("📷", type=["png", "jpg", "jpeg"], label_visibility="collapsed", key="chat_image_upload")
+# Image upload section - beside chat input area
+col1, col2, col3 = st.columns([1, 8, 1])
+with col1:
+    uploaded_image = st.file_uploader("📷 Upload", type=["png", "jpg", "jpeg"], key="chat_image_upload")
     if uploaded_image is not None:
         st.session_state.uploaded_images.append(uploaded_image)
         st.rerun()
 
+# Display preview of uploaded images
+if st.session_state.uploaded_images:
+    st.write("**Images to send:**")
+    cols = st.columns(len(st.session_state.uploaded_images))
+    for i, img in enumerate(st.session_state.uploaded_images):
+        with cols[i]:
+            st.image(img, width=100)
+
 # User input
-if prompt := st.chat_input(t["input_placeholder"]):
+prompt = st.chat_input(t["input_placeholder"])
+
+# Handle user input
+if prompt:
     # Prepare message content
     message_content = {"text": prompt, "images": st.session_state.uploaded_images.copy() if st.session_state.uploaded_images else []}
 
