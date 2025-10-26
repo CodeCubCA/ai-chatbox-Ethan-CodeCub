@@ -775,6 +775,8 @@ for message in st.session_state.messages:
     avatar = None
     if message["role"] == "assistant" and st.session_state.ai_avatar is not None:
         avatar = st.session_state.ai_avatar
+    elif message["role"] == "user" and st.session_state.profile_photo is not None:
+        avatar = st.session_state.profile_photo
 
     with st.chat_message(message["role"], avatar=avatar):
         # Handle both string and dict content (for messages with images)
@@ -824,7 +826,8 @@ if prompt := st.chat_input(t["input_placeholder"]):
     st.session_state.uploaded_images = []
 
     # Display user message
-    with st.chat_message("user"):
+    user_avatar = st.session_state.profile_photo if st.session_state.profile_photo is not None else None
+    with st.chat_message("user", avatar=user_avatar):
         st.markdown(prompt)
         # Display uploaded images if any
         if message_content["images"]:
