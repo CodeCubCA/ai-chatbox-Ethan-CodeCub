@@ -70,6 +70,9 @@ if "ai_avatar" not in st.session_state:
 if "page_icon" not in st.session_state:
     st.session_state.page_icon = "💬"
 
+if "uploaded_images" not in st.session_state:
+    st.session_state.uploaded_images = []
+
 # Language instruction templates and UI translations
 language_instructions = {
     "English": "Respond in English.",
@@ -774,12 +777,22 @@ for message in st.session_state.messages:
         avatar = st.session_state.ai_avatar
 
     with st.chat_message(message["role"], avatar=avatar):
-        st.markdown(message["content"])
+        # Handle both string and dict content (for messages with images)
+        if isinstance(message["content"], dict):
+            # Message with images
+            st.markdown(message["content"]["text"])
+            if message["content"].get("images"):
+                for img in message["content"]["images"]:
+                    st.image(img, width=300)
+        else:
+            # Regular text message
+            st.markdown(message["content"])
 
         # If assistant message contains code, show run button
-        if message["role"] == "assistant" and "```python" in message["content"]:
+        content_text = message["content"] if isinstance(message["content"], str) else message["content"].get("text", "")
+        if message["role"] == "assistant" and "```python" in content_text:
             if st.button(t["run_code"], key=f"run_{st.session_state.messages.index(message)}"):
-                code_results = extract_and_run_code(message["content"])
+                code_results = extract_and_run_code(content_text)
                 for result in code_results:
                     with st.expander(t["code_result"], expanded=True):
                         st.code(result['code'], language='python')
@@ -791,14 +804,32 @@ for message in st.session_state.messages:
                             st.error(t["error_label"])
                             st.code(result['error'])
 
+# Image upload section
+col_upload, col_input = st.columns([1, 5])
+with col_upload:
+    uploaded_image = st.file_uploader("📷", type=["png", "jpg", "jpeg"], label_visibility="collapsed", key="chat_image_upload")
+    if uploaded_image is not None:
+        st.session_state.uploaded_images.append(uploaded_image)
+        st.rerun()
+
 # User input
 if prompt := st.chat_input(t["input_placeholder"]):
+    # Prepare message content
+    message_content = {"text": prompt, "images": st.session_state.uploaded_images.copy() if st.session_state.uploaded_images else []}
+
     # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "content": message_content})
+
+    # Clear uploaded images after adding to message
+    st.session_state.uploaded_images = []
 
     # Display user message
     with st.chat_message("user"):
         st.markdown(prompt)
+        # Display uploaded images if any
+        if message_content["images"]:
+            for img in message_content["images"]:
+                st.image(img, width=300)
 
     # Display assistant reply
     avatar = st.session_state.ai_avatar if st.session_state.ai_avatar is not None else None
@@ -810,13 +841,23 @@ if prompt := st.chat_input(t["input_placeholder"]):
             # Build message list with personality and language settings
             system_message = {
                 "role": "system",
-                "content": f"{personality_prompts[st.session_state.personality]} {language_instructions[st.session_state.language]}"
+                "content": f"{personality_prompts[st.session_state.personality]} {language_instructions[st.session_state.language]} Note: I cannot generate images directly, but I can describe images, analyze uploaded images, and provide creative descriptions for image generation prompts."
             }
 
-            messages_with_personality = [system_message] + [
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ]
+            # Convert messages to API format (extract text only, as Groq doesn't support image input)
+            api_messages = [system_message]
+            for m in st.session_state.messages:
+                content = m["content"]
+                if isinstance(content, dict):
+                    # Extract text and add note about images
+                    text = content["text"]
+                    if content.get("images"):
+                        text += f"\n[User uploaded {len(content['images'])} image(s)]"
+                    api_messages.append({"role": m["role"], "content": text})
+                else:
+                    api_messages.append({"role": m["role"], "content": content})
+
+            messages_with_personality = api_messages
 
             # Call Groq API
             stream = client.chat.completions.create(
