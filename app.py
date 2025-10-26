@@ -70,9 +70,6 @@ if "ai_avatar" not in st.session_state:
 if "page_icon" not in st.session_state:
     st.session_state.page_icon = "💬"
 
-if "show_password" not in st.session_state:
-    st.session_state.show_password = False
-
 # Language instruction templates and UI translations
 language_instructions = {
     "English": "Respond in English.",
@@ -666,42 +663,13 @@ if not st.session_state.signed_in:
             key="signin_email_input"
         )
 
-        # Password field with custom toggle
-        st.write(t["enter_password"])
-        col_pwd, col_eye = st.columns([10, 1])
-        with col_pwd:
-            if st.session_state.show_password:
-                # Show password as plain text
-                signin_password = st.text_input(
-                    t["enter_password"],
-                    placeholder=t["password_placeholder"],
-                    type="default",
-                    key="signin_password_input",
-                    help=t["password_requirements"],
-                    label_visibility="collapsed"
-                )
-            else:
-                # Show password as hidden dots
-                signin_password = st.text_input(
-                    t["enter_password"],
-                    placeholder=t["password_placeholder"],
-                    type="password",
-                    key="signin_password_input",
-                    help=t["password_requirements"],
-                    label_visibility="collapsed"
-                )
-        with col_eye:
-            # Toggle button - shows current state (what password IS now)
-            if st.session_state.show_password:
-                # Password is visible, show open eye, click to hide
-                if st.button("👁️", key="hide_pwd"):
-                    st.session_state.show_password = False
-                    st.rerun()
-            else:
-                # Password is hidden, show crossed eye, click to show
-                if st.button("👁️‍🗨️", key="show_pwd"):
-                    st.session_state.show_password = True
-                    st.rerun()
+        signin_password = st.text_input(
+            t["enter_password"],
+            placeholder=t["password_placeholder"],
+            type="password",
+            key="signin_password_input",
+            help=t["password_requirements"]
+        )
 
         if st.button(t["signin_button"], type="primary", use_container_width=True):
             # Check if all fields are filled
