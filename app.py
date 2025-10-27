@@ -933,7 +933,9 @@ if prompt:
 
     # Check if we need to search the web
     web_context = ""
-    search_keywords = ["search", "find", "look up", "what is", "who is", "current", "latest", "news", "today", "now", "recent"]
+    search_keywords = ["search", "find", "look up", "what is", "what's", "who is", "current", "latest",
+                       "news", "today", "now", "recent", "weather", "forecast", "temperature",
+                       "tomorrow", "how to", "when is", "where is"]
     url_pattern = r'https?://[^\s]+'
 
     # Check for URLs in the prompt
@@ -947,14 +949,19 @@ if prompt:
     # Check if user wants to search
     elif any(keyword in prompt.lower() for keyword in search_keywords):
         with st.spinner("🔍 Searching the web..."):
-            search_results = web_search(prompt, num_results=3)
-            if search_results:
+            search_results = web_search(prompt, num_results=5)
+            if search_results and len(search_results) > 0:
                 web_context = "\n\n[Web Search Results]:\n"
                 for i, result in enumerate(search_results):
                     if "error" not in result:
                         web_context += f"{i+1}. {result['title']}\n"
                         web_context += f"   {result['snippet']}\n"
                         web_context += f"   URL: {result['link']}\n\n"
+
+                if not web_context.strip().endswith("URL:"):
+                    st.info(f"🔍 Found {len(search_results)} search results")
+            else:
+                web_context = "\n\n[Web search was attempted but no results were found]"
 
     # Display assistant reply
     avatar = st.session_state.ai_avatar if st.session_state.ai_avatar is not None else None
