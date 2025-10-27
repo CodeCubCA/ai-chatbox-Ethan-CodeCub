@@ -2,10 +2,74 @@ import streamlit as st
 import os
 import re
 import sys
+import requests
 from io import StringIO, BytesIO
 from groq import Groq
 from dotenv import load_dotenv
 from PIL import Image
+from urllib.parse import quote_plus
+from bs4 import BeautifulSoup
+
+# Web search function
+def web_search(query, num_results=3):
+    """Search the web and return results"""
+    try:
+        # Use DuckDuckGo's HTML search (no API key needed)
+        url = f"https://html.duckduckgo.com/html/?q={quote_plus(query)}"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            results = []
+
+            for result in soup.find_all('div', class_='result')[:num_results]:
+                title_elem = result.find('a', class_='result__a')
+                snippet_elem = result.find('a', class_='result__snippet')
+
+                if title_elem:
+                    title = title_elem.get_text(strip=True)
+                    link = title_elem.get('href', '')
+                    snippet = snippet_elem.get_text(strip=True) if snippet_elem else ""
+                    results.append({
+                        'title': title,
+                        'link': link,
+                        'snippet': snippet
+                    })
+
+            return results
+        return []
+    except Exception as e:
+        return [{"error": str(e)}]
+
+# Fetch webpage content
+def fetch_webpage(url):
+    """Fetch and extract text from a webpage"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            # Remove script and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+
+            # Get text
+            text = soup.get_text()
+            lines = (line.strip() for line in text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            text = ' '.join(chunk for chunk in chunks if chunk)
+
+            return text[:5000]  # Limit to 5000 characters
+        return "Could not fetch webpage"
+    except Exception as e:
+        return f"Error fetching webpage: {str(e)}"
 
 # Email validation function
 def is_valid_email(email):
@@ -867,6 +931,31 @@ if prompt:
             for img in message_content["images"]:
                 st.image(img, width=300)
 
+    # Check if we need to search the web
+    web_context = ""
+    search_keywords = ["search", "find", "look up", "what is", "who is", "current", "latest", "news", "today", "now", "recent"]
+    url_pattern = r'https?://[^\s]+'
+
+    # Check for URLs in the prompt
+    urls_found = re.findall(url_pattern, prompt)
+    if urls_found:
+        with st.spinner("🌐 Fetching webpage content..."):
+            for url in urls_found:
+                webpage_content = fetch_webpage(url)
+                web_context += f"\n\n[Content from {url}]:\n{webpage_content}\n"
+
+    # Check if user wants to search
+    elif any(keyword in prompt.lower() for keyword in search_keywords):
+        with st.spinner("🔍 Searching the web..."):
+            search_results = web_search(prompt, num_results=3)
+            if search_results:
+                web_context = "\n\n[Web Search Results]:\n"
+                for i, result in enumerate(search_results):
+                    if "error" not in result:
+                        web_context += f"{i+1}. {result['title']}\n"
+                        web_context += f"   {result['snippet']}\n"
+                        web_context += f"   URL: {result['link']}\n\n"
+
     # Display assistant reply
     avatar = st.session_state.ai_avatar if st.session_state.ai_avatar is not None else None
     with st.chat_message("assistant", avatar=avatar):
@@ -875,23 +964,34 @@ if prompt:
 
         try:
             # Build message list with personality and language settings
+            internet_note = "You have access to the internet. When users ask about current events, recent information, or provide URLs, use the web search results or webpage content provided in the context."
             system_message = {
                 "role": "system",
-                "content": f"{personality_prompts[st.session_state.personality]} {language_instructions[st.session_state.language]} Note: I cannot generate images directly, but I can describe images, analyze uploaded images, and provide creative descriptions for image generation prompts."
+                "content": f"{personality_prompts[st.session_state.personality]} {language_instructions[st.session_state.language]} {internet_note}"
             }
 
             # Convert messages to API format (extract text only, as Groq doesn't support image input)
             api_messages = [system_message]
-            for m in st.session_state.messages:
+            for i, m in enumerate(st.session_state.messages):
                 content = m["content"]
                 if isinstance(content, dict):
                     # Extract text and add note about images
                     text = content["text"]
                     if content.get("images"):
                         text += f"\n[User uploaded {len(content['images'])} image(s)]"
+
+                    # Add web context to the last user message
+                    if i == len(st.session_state.messages) - 1 and m["role"] == "user" and web_context:
+                        text += web_context
+
                     api_messages.append({"role": m["role"], "content": text})
                 else:
-                    api_messages.append({"role": m["role"], "content": content})
+                    message_text = content
+                    # Add web context to the last user message
+                    if i == len(st.session_state.messages) - 1 and m["role"] == "user" and web_context:
+                        message_text += web_context
+
+                    api_messages.append({"role": m["role"], "content": message_text})
 
             messages_with_personality = api_messages
 
