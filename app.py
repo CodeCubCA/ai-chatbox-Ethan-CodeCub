@@ -3,14 +3,24 @@ import os
 import re
 import sys
 import requests
+import base64
 from io import StringIO, BytesIO
 from groq import Groq
 from dotenv import load_dotenv
 from PIL import Image
 from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
+import google.generativeai as genai
 
-# Web search function
+# Set page configuration FIRST - must be before any other Streamlit commands
+st.set_page_config(
+    page_title="My Can Do Everything AI Assistant",
+    page_icon="🧑‍💻",
+    layout="centered"
+)
+
+# Web search function with caching
+@st.cache_data(ttl=3600)  # Cache for 1 hour
 def web_search(query, num_results=3):
     """Search the web and return results"""
     try:
@@ -19,7 +29,7 @@ def web_search(query, num_results=3):
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=5)  # Reduced timeout
 
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -44,14 +54,15 @@ def web_search(query, num_results=3):
     except Exception as e:
         return [{"error": str(e)}]
 
-# Fetch webpage content
+# Fetch webpage content with caching
+@st.cache_data(ttl=1800)  # Cache for 30 minutes
 def fetch_webpage(url):
     """Fetch and extract text from a webpage"""
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=5)  # Reduced timeout
 
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -70,6 +81,100 @@ def fetch_webpage(url):
         return "Could not fetch webpage"
     except Exception as e:
         return f"Error fetching webpage: {str(e)}"
+
+# Convert image to base64 for vision API
+def image_to_base64(image_file):
+    """Convert uploaded image to base64 string"""
+    try:
+        # Read the image file
+        image_file.seek(0)
+        image_bytes = image_file.read()
+        # Convert to base64
+        base64_image = base64.b64encode(image_bytes).decode('utf-8')
+        return base64_image
+    except Exception as e:
+        st.error(f"Error converting image: {str(e)}")
+        return None
+
+# Convert image to text representation with pixel data
+def image_to_text_representation(image_file):
+    """Convert image to detailed text representation including pixel data"""
+    try:
+        # Read and open image
+        image_file.seek(0)
+        img = Image.open(image_file)
+
+        # Resize for processing (smaller = faster, but less detail)
+        # Using 50x50 gives us 2500 pixels of data
+        img_small = img.resize((50, 50), Image.Resampling.LANCZOS)
+
+        # Convert to RGB if necessary
+        if img_small.mode != 'RGB':
+            img_small = img_small.convert('RGB')
+
+        # Get image metadata
+        width, height = img.size
+        format_type = img.format if img.format else "Unknown"
+
+        # Build text representation
+        text_rep = f"\n[IMAGE DATA START]\n"
+        text_rep += f"Original Size: {width}x{height} pixels\n"
+        text_rep += f"Format: {format_type}\n"
+        text_rep += f"Analyzed at: 50x50 resolution for processing\n\n"
+
+        # Convert pixel data to text
+        text_rep += "PIXEL DATA (RGB values, 0-255 range):\n"
+        text_rep += "Format: Each line = Row of pixels, Each pixel = (R,G,B)\n\n"
+
+        pixels = img_small.load()
+        for y in range(50):
+            row_data = []
+            for x in range(50):
+                r, g, b = pixels[x, y]
+                row_data.append(f"({r},{g},{b})")
+            text_rep += " ".join(row_data) + "\n"
+
+        # Add color analysis
+        text_rep += "\n[COLOR ANALYSIS]\n"
+        # Get average color
+        img_array = list(img_small.getdata())
+        avg_r = sum(p[0] for p in img_array) // len(img_array)
+        avg_g = sum(p[1] for p in img_array) // len(img_array)
+        avg_b = sum(p[2] for p in img_array) // len(img_array)
+        text_rep += f"Average Color: RGB({avg_r}, {avg_g}, {avg_b})\n"
+
+        # Detect dominant colors
+        if avg_r > avg_g and avg_r > avg_b:
+            dominant = "Red tones"
+        elif avg_g > avg_r and avg_g > avg_b:
+            dominant = "Green tones"
+        elif avg_b > avg_r and avg_b > avg_g:
+            dominant = "Blue tones"
+        else:
+            dominant = "Neutral/Gray tones"
+        text_rep += f"Dominant Color: {dominant}\n"
+
+        # Brightness analysis
+        brightness = (avg_r + avg_g + avg_b) // 3
+        if brightness > 200:
+            brightness_level = "Very Bright"
+        elif brightness > 150:
+            brightness_level = "Bright"
+        elif brightness > 100:
+            brightness_level = "Medium"
+        elif brightness > 50:
+            brightness_level = "Dark"
+        else:
+            brightness_level = "Very Dark"
+        text_rep += f"Brightness: {brightness_level} (avg: {brightness}/255)\n"
+
+        text_rep += "\n[IMAGE DATA END]\n"
+        text_rep += "\nPlease analyze the pixel data above to understand what's in the image. "
+        text_rep += "Look for patterns in the RGB values to identify objects, shapes, colors, and content.\n"
+
+        return text_rep
+    except Exception as e:
+        return f"\n[ERROR: Could not process image - {str(e)}]\n"
 
 # Email validation function
 def is_valid_email(email):
@@ -93,15 +198,89 @@ def is_valid_password(password):
 # Load environment variables
 load_dotenv()
 
-# Initialize Groq client
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+# Initialize Groq client with caching
+@st.cache_resource
+def get_groq_client():
+    return Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-# Set page configuration
-st.set_page_config(
-    page_title="My Can Do Everything AI Assistant",
-    page_icon="🧑‍💻",
-    layout="centered"
-)
+client = get_groq_client()
+
+# Initialize Gemini client
+@st.cache_resource
+def get_gemini_client():
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    return genai.GenerativeModel('gemini-1.5-flash')
+
+gemini_client = get_gemini_client()
+
+# Add cool rainbow gradient background
+st.markdown("""
+<style>
+    /* Rainbow animated background */
+    .stApp {
+        background: linear-gradient(124deg, #ff2400, #e81d1d, #e8b71d, #e3e81d, #1de840, #1ddde8, #2b1de8, #dd00f3, #dd00f3);
+        background-size: 1800% 1800%;
+        animation: rainbow 18s ease infinite;
+    }
+
+    @keyframes rainbow {
+        0% { background-position: 0% 82%; }
+        50% { background-position: 100% 19%; }
+        100% { background-position: 0% 82%; }
+    }
+
+    /* Make cards semi-transparent with glass effect */
+    .stChatMessage {
+        background-color: rgba(255, 255, 255, 0.85) !important;
+        backdrop-filter: blur(15px);
+        border-radius: 20px;
+        padding: 20px;
+        margin: 15px 0;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* Rainbow gradient sidebar */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg,
+            rgba(255, 36, 0, 0.7) 0%,
+            rgba(232, 29, 29, 0.7) 14%,
+            rgba(232, 183, 29, 0.7) 28%,
+            rgba(227, 232, 29, 0.7) 42%,
+            rgba(29, 232, 64, 0.7) 56%,
+            rgba(29, 221, 232, 0.7) 70%,
+            rgba(43, 29, 232, 0.7) 84%,
+            rgba(221, 0, 243, 0.7) 100%);
+        backdrop-filter: blur(15px);
+    }
+
+    /* Glowing input box */
+    .stChatInputContainer {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+        backdrop-filter: blur(10px);
+        border-radius: 30px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    }
+
+    /* Make buttons glow */
+    .stButton>button {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 15px;
+        color: white;
+        font-weight: bold;
+        text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        transition: all 0.3s ease;
+    }
+
+    .stButton>button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Initialize session state FIRST
 if "messages" not in st.session_state:
@@ -870,51 +1049,22 @@ for message in st.session_state.messages:
                             st.error(t["error_label"])
                             st.code(result['error'])
 
-# Image upload section - beside chat input area
-col_img, col_chat = st.columns([2, 8])
-with col_img:
-    st.write("**📷 Upload Images**")
-    uploaded_image = st.file_uploader(
-        "Drag and drop images here",
-        type=["png", "jpg", "jpeg"],
-        key="chat_image_upload",
-        accept_multiple_files=False
-    )
-    if uploaded_image is not None:
-        # Only add if not already in the list (avoid duplicates)
-        if uploaded_image not in st.session_state.uploaded_images:
-            st.session_state.uploaded_images.append(uploaded_image)
-            st.rerun()
-
-    # Display preview of uploaded images
-    if st.session_state.uploaded_images:
-        col_title, col_clear = st.columns([2, 1])
-        with col_title:
-            st.write(f"**Ready to send ({len(st.session_state.uploaded_images)}):**")
-        with col_clear:
-            if st.button("Clear All", key="clear_all_images"):
-                st.session_state.uploaded_images = []
-                st.rerun()
-
-        for i, img in enumerate(st.session_state.uploaded_images):
-            col_prev, col_del = st.columns([3, 1])
-            with col_prev:
-                st.image(img, width=150)
-            with col_del:
-                if st.button("❌", key=f"del_img_{i}"):
-                    st.session_state.uploaded_images.pop(i)
-                    st.rerun()
-
-with col_chat:
-    st.write("")  # Spacing
-
-# User input
+# User input (no separate image upload section here - moved to sidebar)
 prompt = st.chat_input(t["input_placeholder"])
 
 # Handle user input
 if prompt:
-    # Prepare message content
-    message_content = {"text": prompt, "images": st.session_state.uploaded_images.copy() if st.session_state.uploaded_images else []}
+    # Prepare message content with images converted to bytes (so they persist across reruns)
+    saved_images = []
+    if st.session_state.uploaded_images:
+        for img_file in st.session_state.uploaded_images:
+            # Convert to bytes so it persists
+            img_file.seek(0)
+            img_bytes = BytesIO(img_file.read())
+            img_bytes.name = img_file.name  # Preserve filename
+            saved_images.append(img_bytes)
+
+    message_content = {"text": prompt, "images": saved_images if saved_images else []}
 
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": message_content})
@@ -972,50 +1122,131 @@ if prompt:
         try:
             # Build message list with personality and language settings
             internet_note = "You have access to the internet. When users ask about current events, recent information, or provide URLs, use the web search results or webpage content provided in the context."
+            image_analysis_note = "\n\nIMAGE ANALYSIS CAPABILITY: When you receive [IMAGE DATA START]...[IMAGE DATA END] sections, you are receiving pixel-level RGB data from images. Analyze the RGB values (0-255 for Red, Green, Blue) to understand the image content. Look for patterns: similar RGB values indicate uniform areas, gradients show transitions, high values mean bright colors, low values mean dark colors. Use the color analysis data and pixel patterns to describe what's in the image, identify objects, shapes, text, and overall composition."
             system_message = {
                 "role": "system",
-                "content": f"{personality_prompts[st.session_state.personality]} {language_instructions[st.session_state.language]} {internet_note}"
+                "content": f"{personality_prompts[st.session_state.personality]} {language_instructions[st.session_state.language]} {internet_note}{image_analysis_note}"
             }
 
-            # Convert messages to API format (extract text only, as Groq doesn't support image input)
+            # Convert messages to API format with vision support
+            # OPTIMIZATION: Only send last 10 messages to save tokens
+            recent_messages = st.session_state.messages[-10:] if len(st.session_state.messages) > 10 else st.session_state.messages
+
             api_messages = [system_message]
-            for i, m in enumerate(st.session_state.messages):
+            has_images = False
+
+            for i, m in enumerate(recent_messages):
                 content = m["content"]
                 if isinstance(content, dict):
-                    # Extract text and add note about images
-                    text = content["text"]
-                    if content.get("images"):
-                        text += f"\n[User uploaded {len(content['images'])} image(s)]"
+                    # Check if this message has images - handle both list and empty list cases
+                    images_list = content.get("images", [])
+                    # Filter out None or empty objects
+                    valid_images = [img for img in images_list if img is not None]
 
-                    # Add web context to the last user message
-                    if i == len(st.session_state.messages) - 1 and m["role"] == "user" and web_context:
-                        text += web_context
+                    if valid_images and len(valid_images) > 0:
+                        st.info(f"🖼️ Converting {len(valid_images)} image(s) to pixel data for analysis...")
 
-                    api_messages.append({"role": m["role"], "content": text})
+                        # Convert images to text representation (pixel data)
+                        text = content.get("text", "")
+
+                        # Add each image as text data
+                        for idx, img_file in enumerate(valid_images):
+                            image_text = image_to_text_representation(img_file)
+                            text += f"\n\n--- IMAGE {idx + 1} ---\n{image_text}\n"
+
+                        # Add web context to the last user message
+                        if i == len(recent_messages) - 1 and m["role"] == "user" and web_context:
+                            text += web_context
+
+                        st.success(f"✅ Image data converted! ({len(text)} characters)")
+                        api_messages.append({"role": m["role"], "content": text})
+                    else:
+                        # Text only
+                        text = content.get("text", "")
+                        if i == len(recent_messages) - 1 and m["role"] == "user" and web_context:
+                            text += web_context
+                        api_messages.append({"role": m["role"], "content": text})
                 else:
                     message_text = content
                     # Add web context to the last user message
-                    if i == len(st.session_state.messages) - 1 and m["role"] == "user" and web_context:
+                    if i == len(recent_messages) - 1 and m["role"] == "user" and web_context:
                         message_text += web_context
-
                     api_messages.append({"role": m["role"], "content": message_text})
 
             messages_with_personality = api_messages
 
-            # Call Groq API
-            stream = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=messages_with_personality,
-                stream=True,
-                max_tokens=2048,
-                temperature=0.7
-            )
+            # Always use Groq now (images are converted to text)
+            if False:  # Disabled Gemini vision - using text representation instead
+                # Use Gemini for vision with improved prompt
+                # Build prompt with system message and conversation
+                gemini_prompt = system_message["content"] + "\n\n"
 
-            # Stream output response
-            for chunk in stream:
-                if chunk.choices[0].delta.content:
-                    full_response += chunk.choices[0].delta.content
-                    message_placeholder.markdown(full_response + "▌")
+                # Add conversation history (text only for context)
+                for msg in api_messages[1:-1]:  # Skip system and last message
+                    if isinstance(msg["content"], str):
+                        role = "User" if msg["role"] == "user" else "Assistant"
+                        gemini_prompt += f"{role}: {msg['content']}\n\n"
+
+                # Get the last user message with images
+                last_msg = api_messages[-1]
+                if isinstance(last_msg["content"], list):
+                    # Build content parts for Gemini
+                    content_parts = []
+
+                    # Add the text prompt first
+                    text_content = gemini_prompt + "User: "
+
+                    for part in last_msg["content"]:
+                        if part["type"] == "text":
+                            text_content += part["text"]
+                        elif part["type"] == "image_url":
+                            # Convert base64 to PIL Image for Gemini
+                            try:
+                                img_data = part["image_url"]["url"].split(",")[1]
+                                img_bytes = base64.b64decode(img_data)
+                                img = Image.open(BytesIO(img_bytes))
+                                content_parts.append(img)
+                            except Exception as img_error:
+                                st.warning(f"Failed to process one image: {str(img_error)}")
+
+                    # Add text first, then images
+                    final_parts = [text_content] + content_parts
+
+                    # Generate response with streaming
+                    try:
+                        response = gemini_client.generate_content(final_parts, stream=True)
+                        for chunk in response:
+                            if hasattr(chunk, 'text') and chunk.text:
+                                full_response += chunk.text
+                                message_placeholder.markdown(full_response + "▌")
+                    except Exception as gemini_error:
+                        st.error(f"Gemini Vision Error: {str(gemini_error)}")
+                        st.error("Please ensure your image is clear and try again.")
+                        raise
+                else:
+                    # Fallback to text
+                    response = gemini_client.generate_content(gemini_prompt + "User: " + last_msg["content"], stream=True)
+                    for chunk in response:
+                        if chunk.text:
+                            full_response += chunk.text
+                            message_placeholder.markdown(full_response + "▌")
+            else:
+                # Use Groq for text-only (faster)
+                # Call Groq API
+                # OPTIMIZATION: Reduced max_tokens from 2048 to 1024 to save quota
+                stream = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=messages_with_personality,
+                    stream=True,
+                    max_tokens=1024,  # Reduced from 2048
+                    temperature=0.7
+                )
+
+                # Stream output response
+                for chunk in stream:
+                    if chunk.choices[0].delta.content:
+                        full_response += chunk.choices[0].delta.content
+                        message_placeholder.markdown(full_response + "▌")
 
             # Display full response
             message_placeholder.markdown(full_response)
@@ -1116,6 +1347,40 @@ with st.sidebar:
         st.session_state.personality = "Friendly"
         st.session_state.language = "English"
         st.rerun()
+
+    st.divider()
+
+    # Image upload section in sidebar
+    st.subheader("📷 Upload Images")
+    uploaded_image = st.file_uploader(
+        "Add images to your next message",
+        type=["png", "jpg", "jpeg"],
+        key="chat_image_upload",
+        accept_multiple_files=False,
+        label_visibility="collapsed"
+    )
+    if uploaded_image is not None:
+        # Only add if not already in the list (avoid duplicates)
+        if uploaded_image not in st.session_state.uploaded_images:
+            st.session_state.uploaded_images.append(uploaded_image)
+            st.rerun()
+
+    # Display preview of uploaded images
+    if st.session_state.uploaded_images:
+        st.write(f"**📎 Ready to send ({len(st.session_state.uploaded_images)} image{'s' if len(st.session_state.uploaded_images) > 1 else ''}):**")
+
+        if st.button("🗑️ Clear All Images", key="clear_all_images", use_container_width=True):
+            st.session_state.uploaded_images = []
+            st.rerun()
+
+        for i, img in enumerate(st.session_state.uploaded_images):
+            col_prev, col_del = st.columns([4, 1])
+            with col_prev:
+                st.image(img, use_column_width=True)
+            with col_del:
+                if st.button("❌", key=f"del_img_{i}", help="Remove"):
+                    st.session_state.uploaded_images.pop(i)
+                    st.rerun()
 
     st.divider()
 
@@ -1252,7 +1517,7 @@ with st.sidebar:
 
     # Display current configuration
     st.subheader(t["current_config"])
-    st.write(f"**{t['model']}**: llama-3.3-70b-versatile")
+    st.write(f"**{t['model']}**: Groq (text) + Gemini (vision)")
     st.write(f"**{t['language']}**: {st.session_state.language}")
     st.write(f"**{t['personality']}**: {personality_icons[st.session_state.personality]} {personality_names[st.session_state.personality]}")
     st.write(f"**{t['messages']}**: {len(st.session_state.messages)}")
