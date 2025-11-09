@@ -105,8 +105,8 @@ def image_to_text_representation(image_file):
         img = Image.open(image_file)
 
         # Resize for processing (smaller = faster, but less detail)
-        # Using 50x50 gives us 2500 pixels of data
-        img_small = img.resize((50, 50), Image.Resampling.LANCZOS)
+        # Using 20x20 gives us 400 pixels of data (reduced from 50x50 to save tokens)
+        img_small = img.resize((20, 20), Image.Resampling.LANCZOS)
 
         # Convert to RGB if necessary
         if img_small.mode != 'RGB':
@@ -120,16 +120,16 @@ def image_to_text_representation(image_file):
         text_rep = f"\n[IMAGE DATA START]\n"
         text_rep += f"Original Size: {width}x{height} pixels\n"
         text_rep += f"Format: {format_type}\n"
-        text_rep += f"Analyzed at: 50x50 resolution for processing\n\n"
+        text_rep += f"Analyzed at: 20x20 resolution for processing\n\n"
 
-        # Convert pixel data to text
-        text_rep += "PIXEL DATA (RGB values, 0-255 range):\n"
+        # Convert pixel data to text (reduced resolution to save tokens)
+        text_rep += "PIXEL DATA SAMPLE (RGB values, 0-255 range):\n"
         text_rep += "Format: Each line = Row of pixels, Each pixel = (R,G,B)\n\n"
 
         pixels = img_small.load()
-        for y in range(50):
+        for y in range(20):
             row_data = []
-            for x in range(50):
+            for x in range(20):
                 r, g, b = pixels[x, y]
                 row_data.append(f"({r},{g},{b})")
             text_rep += " ".join(row_data) + "\n"
