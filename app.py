@@ -5,6 +5,7 @@ import sys
 import requests
 import base64
 from io import StringIO, BytesIO
+from functools import partial
 from groq import Groq
 from dotenv import load_dotenv
 from PIL import Image
@@ -1320,7 +1321,6 @@ with st.sidebar:
         st.button("🗑️ Clear All Images", key="clear_all_images", use_container_width=True, on_click=clear_all_images)
 
         # Display images with delete buttons
-        # Create a copy of the list to iterate over to avoid modification during iteration
         for i in range(len(st.session_state.uploaded_images)):
             if i >= len(st.session_state.uploaded_images):
                 break
@@ -1332,12 +1332,12 @@ with st.sidebar:
                 # Use unique key based on filename and index
                 img_key = f"del_{img.name}_{i}" if hasattr(img, 'name') else f"del_img_{i}"
 
-                # Use a callback function to delete immediately
-                def delete_image(index=i):
+                # Use partial to properly bind the index value
+                def delete_image_at_index(index):
                     if index < len(st.session_state.uploaded_images):
                         st.session_state.uploaded_images.pop(index)
 
-                st.button("❌", key=img_key, help="Remove", on_click=delete_image)
+                st.button("❌", key=img_key, help="Remove", on_click=partial(delete_image_at_index, i))
 
     st.divider()
 
