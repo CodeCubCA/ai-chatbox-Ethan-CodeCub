@@ -6,7 +6,6 @@ import requests
 import base64
 from io import StringIO, BytesIO
 from functools import partial
-from groq import Groq
 from dotenv import load_dotenv
 from PIL import Image
 from urllib.parse import quote_plus
@@ -225,20 +224,13 @@ def is_valid_password(password):
 # Load environment variables
 load_dotenv()
 
-# Initialize Groq client with caching
-@st.cache_resource
-def get_groq_client():
-    return Groq(api_key=os.getenv("GROQ_API_KEY"))
-
-client = get_groq_client()
-
-# Initialize Gemini client
+# Initialize Gemini client with caching
 @st.cache_resource
 def get_gemini_client():
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
     return genai.GenerativeModel('gemini-1.5-flash')
 
-gemini_client = get_gemini_client()
+client = get_gemini_client()
 
 # Add cool rainbow gradient background
 st.markdown("""
@@ -1200,20 +1192,31 @@ if prompt:
 
             messages_with_personality = api_messages
 
-            # Always use Groq (images are converted to compact 20x20 pixel text)
-            # Call Groq API
-            stream = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=messages_with_personality,
+            # Use Gemini API for all requests (images are converted to 32x32 pixel text with edge detection)
+            # Build conversation prompt for Gemini
+            conversation_text = ""
+            for msg in messages_with_personality:
+                if msg["role"] == "system":
+                    conversation_text += msg["content"] + "\n\n"
+                elif msg["role"] == "user":
+                    conversation_text += "User: " + msg["content"] + "\n\n"
+                elif msg["role"] == "assistant":
+                    conversation_text += "Assistant: " + msg["content"] + "\n\n"
+
+            # Call Gemini API with streaming
+            response = client.generate_content(
+                conversation_text,
                 stream=True,
-                max_tokens=1024,
-                temperature=0.7
+                generation_config={
+                    'max_output_tokens': 1024,
+                    'temperature': 0.7
+                }
             )
 
             # Stream output response
-            for chunk in stream:
-                if chunk.choices[0].delta.content:
-                    full_response += chunk.choices[0].delta.content
+            for chunk in response:
+                if hasattr(chunk, 'text') and chunk.text:
+                    full_response += chunk.text
                     message_placeholder.markdown(full_response + "▌")
 
             # Display full response
@@ -1500,7 +1503,7 @@ with st.sidebar:
 
     # Display current configuration
     st.subheader(t["current_config"])
-    st.write(f"**{t['model']}**: Groq (text) + Gemini (vision)")
+    st.write(f"**{t['model']}**: Google Gemini 1.5 Flash")
     st.write(f"**{t['language']}**: {st.session_state.language}")
     st.write(f"**{t['personality']}**: {personality_icons[st.session_state.personality]} {personality_names[st.session_state.personality]}")
     st.write(f"**{t['messages']}**: {len(st.session_state.messages)}")
