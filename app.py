@@ -99,15 +99,15 @@ def image_to_base64(image_file):
 
 # Convert image to text representation with pixel data
 def image_to_text_representation(image_file):
-    """Convert image to detailed text representation including pixel data"""
+    """Convert image to detailed text representation with enhanced recognition"""
     try:
         # Read and open image
         image_file.seek(0)
         img = Image.open(image_file)
 
-        # Resize for processing (smaller = faster, but less detail)
-        # Using 20x20 gives us 400 pixels of data (reduced from 50x50 to save tokens)
-        img_small = img.resize((20, 20), Image.Resampling.LANCZOS)
+        # Resize for processing - using 32x32 for better detail (1024 pixels)
+        # This is a good balance: detailed enough for recognition, small enough for tokens
+        img_small = img.resize((32, 32), Image.Resampling.LANCZOS)
 
         # Convert to RGB if necessary
         if img_small.mode != 'RGB':
@@ -117,22 +117,23 @@ def image_to_text_representation(image_file):
         width, height = img.size
         format_type = img.format if img.format else "Unknown"
 
-        # Build text representation
-        text_rep = f"\n[IMAGE DATA START]\n"
+        # Build enhanced text representation
+        text_rep = f"\n[IMAGE ANALYSIS START]\n"
         text_rep += f"Original Size: {width}x{height} pixels\n"
         text_rep += f"Format: {format_type}\n"
-        text_rep += f"Analyzed at: 20x20 resolution for processing\n\n"
+        text_rep += f"Analyzed at: 32x32 resolution (1024 pixels)\n\n"
 
-        # Convert pixel data to text (reduced resolution to save tokens)
-        text_rep += "PIXEL DATA SAMPLE (RGB values, 0-255 range):\n"
-        text_rep += "Format: Each line = Row of pixels, Each pixel = (R,G,B)\n\n"
+        # Use compact hexadecimal representation to save tokens
+        text_rep += "PIXEL GRID (Hex RGB format for efficiency):\n"
+        text_rep += "Format: Each row is 32 pixels, each pixel as RRGGBB hex\n\n"
 
         pixels = img_small.load()
-        for y in range(20):
+        for y in range(32):
             row_data = []
-            for x in range(20):
+            for x in range(32):
                 r, g, b = pixels[x, y]
-                row_data.append(f"({r},{g},{b})")
+                # Convert to compact hex format (e.g., FF00AA instead of (255,0,170))
+                row_data.append(f"{r:02X}{g:02X}{b:02X}")
             text_rep += " ".join(row_data) + "\n"
 
         # Add color analysis
@@ -169,9 +170,34 @@ def image_to_text_representation(image_file):
             brightness_level = "Very Dark"
         text_rep += f"Brightness: {brightness_level} (avg: {brightness}/255)\n"
 
-        text_rep += "\n[IMAGE DATA END]\n"
-        text_rep += "\nPlease analyze the pixel data above to understand what's in the image. "
-        text_rep += "Look for patterns in the RGB values to identify objects, shapes, colors, and content.\n"
+        # Add edge detection analysis for better object recognition
+        text_rep += "\n[EDGE DETECTION]\n"
+        edges_detected = []
+        for y in range(1, 31):  # Skip first and last row
+            for x in range(1, 31):  # Skip first and last column
+                # Simple edge detection: check brightness difference with neighbors
+                curr = sum(pixels[x, y]) // 3
+                right = sum(pixels[x + 1, y]) // 3
+                down = sum(pixels[x, y + 1]) // 3
+
+                # If significant brightness difference, mark as edge
+                if abs(curr - right) > 30 or abs(curr - down) > 30:
+                    edges_detected.append((x, y))
+
+        text_rep += f"Edges Detected: {len(edges_detected)} edge points (indicates object boundaries)\n"
+
+        # Analyze edge distribution
+        if edges_detected:
+            avg_edge_x = sum(e[0] for e in edges_detected) / len(edges_detected)
+            avg_edge_y = sum(e[1] for e in edges_detected) / len(edges_detected)
+            text_rep += f"Edge Center: ({avg_edge_x:.1f}, {avg_edge_y:.1f}) - main object location\n"
+
+        text_rep += "\n[IMAGE ANALYSIS END]\n"
+        text_rep += "\nANALYSIS INSTRUCTIONS: The image is represented as a 32x32 pixel grid in hexadecimal RGB format. "
+        text_rep += "Each 6-character code represents one pixel (RRGGBB in hex). "
+        text_rep += "Analyze the pixel patterns, colors, edges, and brightness to identify: "
+        text_rep += "objects, text, people, animals, scenes, shapes, and any visible content. "
+        text_rep += "The edge detection data shows object boundaries. Higher edge density indicates complex shapes.\n"
 
         return text_rep
     except Exception as e:
@@ -1123,7 +1149,7 @@ if prompt:
         try:
             # Build message list with personality and language settings
             internet_note = "You have access to the internet. When users ask about current events, recent information, or provide URLs, use the web search results or webpage content provided in the context."
-            image_analysis_note = "\n\nIMAGE ANALYSIS CAPABILITY: When you receive [IMAGE DATA START]...[IMAGE DATA END] sections, you are receiving pixel-level RGB data from images. Analyze the RGB values (0-255 for Red, Green, Blue) to understand the image content. Look for patterns: similar RGB values indicate uniform areas, gradients show transitions, high values mean bright colors, low values mean dark colors. Use the color analysis data and pixel patterns to describe what's in the image, identify objects, shapes, text, and overall composition."
+            image_analysis_note = "\n\nENHANCED IMAGE ANALYSIS: When you receive [IMAGE ANALYSIS START]...[IMAGE ANALYSIS END] sections, you're getting a 32x32 pixel grid (1024 pixels total) in hexadecimal RGB format. Each pixel is 6 hex characters (RRGGBB). The data includes: 1) Full pixel grid in hex format, 2) Color analysis (average color, dominant tones, brightness), 3) Edge detection data showing object boundaries and locations. Use ALL this data together to accurately identify objects, people, animals, text, scenes, and content. The 32x32 resolution with hex encoding provides good detail while staying token-efficient. Edge detection helps you locate and identify distinct objects in the image."
             system_message = {
                 "role": "system",
                 "content": f"{personality_prompts[st.session_state.personality]} {language_instructions[st.session_state.language]} {internet_note}{image_analysis_note}"
