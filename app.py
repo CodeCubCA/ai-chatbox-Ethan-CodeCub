@@ -1314,23 +1314,30 @@ with st.sidebar:
     if st.session_state.uploaded_images:
         st.write(f"**📎 Ready to send ({len(st.session_state.uploaded_images)} image{'s' if len(st.session_state.uploaded_images) > 1 else ''}):**")
 
-        if st.button("🗑️ Clear All Images", key="clear_all_images", use_container_width=True):
+        def clear_all_images():
             st.session_state.uploaded_images = []
-            st.rerun()
+
+        st.button("🗑️ Clear All Images", key="clear_all_images", use_container_width=True, on_click=clear_all_images)
 
         # Display images with delete buttons
-        for i, img in enumerate(st.session_state.uploaded_images):
+        # Create a copy of the list to iterate over to avoid modification during iteration
+        for i in range(len(st.session_state.uploaded_images)):
+            if i >= len(st.session_state.uploaded_images):
+                break
+            img = st.session_state.uploaded_images[i]
             col_prev, col_del = st.columns([4, 1])
             with col_prev:
                 st.image(img, use_column_width=True)
             with col_del:
                 # Use unique key based on filename and index
                 img_key = f"del_{img.name}_{i}" if hasattr(img, 'name') else f"del_img_{i}"
-                if st.button("❌", key=img_key, help="Remove"):
-                    # Directly remove and rerun immediately
-                    del st.session_state.uploaded_images[i]
-                    st.rerun()
-                    break  # Exit loop after deletion to avoid index issues
+
+                # Use a callback function to delete immediately
+                def delete_image(index=i):
+                    if index < len(st.session_state.uploaded_images):
+                        st.session_state.uploaded_images.pop(index)
+
+                st.button("❌", key=img_key, help="Remove", on_click=delete_image)
 
     st.divider()
 
