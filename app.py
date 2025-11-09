@@ -228,7 +228,7 @@ load_dotenv()
 @st.cache_resource
 def get_gemini_client():
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    return genai.GenerativeModel('gemini-1.5-flash-latest')
+    return genai.GenerativeModel('gemini-2.5-flash')
 
 client = get_gemini_client()
 
@@ -1503,7 +1503,7 @@ with st.sidebar:
 
     # Display current configuration
     st.subheader(t["current_config"])
-    st.write(f"**{t['model']}**: Google Gemini 1.5 Flash")
+    st.write(f"**{t['model']}**: Google Gemini 2.5 Flash")
     st.write(f"**{t['language']}**: {st.session_state.language}")
     st.write(f"**{t['personality']}**: {personality_icons[st.session_state.personality]} {personality_names[st.session_state.personality]}")
     st.write(f"**{t['messages']}**: {len(st.session_state.messages)}")
