@@ -228,7 +228,7 @@ load_dotenv()
 @st.cache_resource
 def get_gemini_client():
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    return genai.GenerativeModel('gemini-1.5-flash')
+    return genai.GenerativeModel('gemini-1.5-flash-latest')
 
 client = get_gemini_client()
 
