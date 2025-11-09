@@ -1318,8 +1318,7 @@ with st.sidebar:
             st.session_state.uploaded_images = []
             st.rerun()
 
-        # Use a unique key based on object id to avoid index issues
-        images_to_remove = []
+        # Display images with delete buttons
         for i, img in enumerate(st.session_state.uploaded_images):
             col_prev, col_del = st.columns([4, 1])
             with col_prev:
@@ -1328,13 +1327,10 @@ with st.sidebar:
                 # Use unique key based on filename and index
                 img_key = f"del_{img.name}_{i}" if hasattr(img, 'name') else f"del_img_{i}"
                 if st.button("❌", key=img_key, help="Remove"):
-                    images_to_remove.append(i)
-
-        # Remove images after iteration to avoid index shifting issues
-        if images_to_remove:
-            for idx in sorted(images_to_remove, reverse=True):
-                st.session_state.uploaded_images.pop(idx)
-            st.rerun()
+                    # Directly remove and rerun immediately
+                    del st.session_state.uploaded_images[i]
+                    st.rerun()
+                    break  # Exit loop after deletion to avoid index issues
 
     st.divider()
 
