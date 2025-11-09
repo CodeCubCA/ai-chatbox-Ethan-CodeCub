@@ -1301,8 +1301,12 @@ with st.sidebar:
         label_visibility="collapsed"
     )
     if uploaded_image is not None:
-        # Only add if not already in the list (avoid duplicates)
-        if uploaded_image not in st.session_state.uploaded_images:
+        # Check if this file is already in the list by comparing name and size
+        is_duplicate = any(
+            img.name == uploaded_image.name and img.size == uploaded_image.size
+            for img in st.session_state.uploaded_images
+        )
+        if not is_duplicate:
             st.session_state.uploaded_images.append(uploaded_image)
             st.rerun()
 
@@ -1314,14 +1318,23 @@ with st.sidebar:
             st.session_state.uploaded_images = []
             st.rerun()
 
+        # Use a unique key based on object id to avoid index issues
+        images_to_remove = []
         for i, img in enumerate(st.session_state.uploaded_images):
             col_prev, col_del = st.columns([4, 1])
             with col_prev:
                 st.image(img, use_column_width=True)
             with col_del:
-                if st.button("❌", key=f"del_img_{i}", help="Remove"):
-                    st.session_state.uploaded_images.pop(i)
-                    st.rerun()
+                # Use unique key based on filename and index
+                img_key = f"del_{img.name}_{i}" if hasattr(img, 'name') else f"del_img_{i}"
+                if st.button("❌", key=img_key, help="Remove"):
+                    images_to_remove.append(i)
+
+        # Remove images after iteration to avoid index shifting issues
+        if images_to_remove:
+            for idx in sorted(images_to_remove, reverse=True):
+                st.session_state.uploaded_images.pop(idx)
+            st.rerun()
 
     st.divider()
 
