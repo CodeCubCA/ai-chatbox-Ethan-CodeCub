@@ -1134,6 +1134,7 @@ if prompt:
 
             api_messages = [system_message]
             has_images = False
+            image_files = []  # Store actual image files for Gemini
 
             for i, m in enumerate(recent_messages):
                 content = m["content"]
@@ -1144,21 +1145,16 @@ if prompt:
                     valid_images = [img for img in images_list if img is not None]
 
                     if valid_images and len(valid_images) > 0:
-                        st.info(f"🖼️ Converting {len(valid_images)} image(s) to pixel data for analysis...")
+                        has_images = True
+                        image_files = valid_images
 
-                        # Convert images to text representation (pixel data)
+                        # For messages with images, just add the text part for now
                         text = content.get("text", "")
-
-                        # Add each image as text data
-                        for idx, img_file in enumerate(valid_images):
-                            image_text = image_to_text_representation(img_file)
-                            text += f"\n\n--- IMAGE {idx + 1} ---\n{image_text}\n"
 
                         # Add web context to the last user message
                         if i == len(recent_messages) - 1 and m["role"] == "user" and web_context:
                             text += web_context
 
-                        st.success(f"✅ Image data converted! ({len(text)} characters)")
                         api_messages.append({"role": m["role"], "content": text})
                     else:
                         # Text only
@@ -1175,9 +1171,10 @@ if prompt:
 
             messages_with_personality = api_messages
 
-            # Always use Groq now (images are converted to text)
-            if False:  # Disabled Gemini vision - using text representation instead
-                # Use Gemini for vision with improved prompt
+            # Use Gemini for vision tasks, Groq for text-only
+            if has_images:  # Enable Gemini vision for images
+                st.info(f"🖼️ Using Gemini Vision to analyze {len(image_files)} image(s)...")
+
                 # Build prompt with system message and conversation
                 gemini_prompt = system_message["content"] + "\n\n"
 
@@ -1187,49 +1184,33 @@ if prompt:
                         role = "User" if msg["role"] == "user" else "Assistant"
                         gemini_prompt += f"{role}: {msg['content']}\n\n"
 
-                # Get the last user message with images
+                # Get the last user message
                 last_msg = api_messages[-1]
-                if isinstance(last_msg["content"], list):
-                    # Build content parts for Gemini
-                    content_parts = []
+                text_content = gemini_prompt + "User: " + last_msg["content"]
 
-                    # Add the text prompt first
-                    text_content = gemini_prompt + "User: "
+                # Build content parts for Gemini
+                content_parts = [text_content]
 
-                    for part in last_msg["content"]:
-                        if part["type"] == "text":
-                            text_content += part["text"]
-                        elif part["type"] == "image_url":
-                            # Convert base64 to PIL Image for Gemini
-                            try:
-                                img_data = part["image_url"]["url"].split(",")[1]
-                                img_bytes = base64.b64decode(img_data)
-                                img = Image.open(BytesIO(img_bytes))
-                                content_parts.append(img)
-                            except Exception as img_error:
-                                st.warning(f"Failed to process one image: {str(img_error)}")
-
-                    # Add text first, then images
-                    final_parts = [text_content] + content_parts
-
-                    # Generate response with streaming
+                # Add images
+                for img_file in image_files:
                     try:
-                        response = gemini_client.generate_content(final_parts, stream=True)
-                        for chunk in response:
-                            if hasattr(chunk, 'text') and chunk.text:
-                                full_response += chunk.text
-                                message_placeholder.markdown(full_response + "▌")
-                    except Exception as gemini_error:
-                        st.error(f"Gemini Vision Error: {str(gemini_error)}")
-                        st.error("Please ensure your image is clear and try again.")
-                        raise
-                else:
-                    # Fallback to text
-                    response = gemini_client.generate_content(gemini_prompt + "User: " + last_msg["content"], stream=True)
+                        img_file.seek(0)
+                        img = Image.open(img_file)
+                        content_parts.append(img)
+                    except Exception as img_error:
+                        st.warning(f"Failed to process one image: {str(img_error)}")
+
+                # Generate response with streaming
+                try:
+                    response = gemini_client.generate_content(content_parts, stream=True)
                     for chunk in response:
-                        if chunk.text:
+                        if hasattr(chunk, 'text') and chunk.text:
                             full_response += chunk.text
                             message_placeholder.markdown(full_response + "▌")
+                except Exception as gemini_error:
+                    st.error(f"Gemini Vision Error: {str(gemini_error)}")
+                    st.error("Please ensure your image is clear and try again.")
+                    raise
             else:
                 # Use Groq for text-only (faster)
                 # Call Groq API
