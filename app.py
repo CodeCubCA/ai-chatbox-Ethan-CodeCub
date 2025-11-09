@@ -1214,10 +1214,17 @@ if prompt:
             )
 
             # Stream output response
-            for chunk in response:
-                if hasattr(chunk, 'text') and chunk.text:
-                    full_response += chunk.text
-                    message_placeholder.markdown(full_response + "▌")
+            try:
+                for chunk in response:
+                    if hasattr(chunk, 'text') and chunk.text:
+                        full_response += chunk.text
+                        message_placeholder.markdown(full_response + "▌")
+            except Exception as stream_error:
+                # Check if it's a safety block or other error
+                if "block" in str(stream_error).lower():
+                    full_response += "\n\n[Response was blocked by safety filters]"
+                else:
+                    full_response += f"\n\n[Streaming error: {str(stream_error)}]"
 
             # Display full response
             message_placeholder.markdown(full_response)
