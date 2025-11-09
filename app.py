@@ -1145,11 +1145,13 @@ if prompt:
                     valid_images = [img for img in images_list if img is not None]
 
                     if valid_images and len(valid_images) > 0:
-                        has_images = True
-                        image_files = valid_images
-
-                        # For messages with images, just add the text part for now
+                        # Convert images to compact text representation for Groq
                         text = content.get("text", "")
+
+                        # Add each image as text data (now much smaller with 20x20)
+                        for idx, img_file in enumerate(valid_images):
+                            image_text = image_to_text_representation(img_file)
+                            text += f"\n\n--- IMAGE {idx + 1} ---\n{image_text}\n"
 
                         # Add web context to the last user message
                         if i == len(recent_messages) - 1 and m["role"] == "user" and web_context:
@@ -1171,63 +1173,21 @@ if prompt:
 
             messages_with_personality = api_messages
 
-            # Use Gemini for vision tasks, Groq for text-only
-            if has_images:  # Enable Gemini vision for images
-                st.info(f"🖼️ Using Gemini Vision to analyze {len(image_files)} image(s)...")
+            # Always use Groq (images are converted to compact 20x20 pixel text)
+            # Call Groq API
+            stream = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=messages_with_personality,
+                stream=True,
+                max_tokens=1024,
+                temperature=0.7
+            )
 
-                # Build prompt with system message and conversation
-                gemini_prompt = system_message["content"] + "\n\n"
-
-                # Add conversation history (text only for context)
-                for msg in api_messages[1:-1]:  # Skip system and last message
-                    if isinstance(msg["content"], str):
-                        role = "User" if msg["role"] == "user" else "Assistant"
-                        gemini_prompt += f"{role}: {msg['content']}\n\n"
-
-                # Get the last user message
-                last_msg = api_messages[-1]
-                text_content = gemini_prompt + "User: " + last_msg["content"]
-
-                # Build content parts for Gemini
-                content_parts = [text_content]
-
-                # Add images
-                for img_file in image_files:
-                    try:
-                        img_file.seek(0)
-                        img = Image.open(img_file)
-                        content_parts.append(img)
-                    except Exception as img_error:
-                        st.warning(f"Failed to process one image: {str(img_error)}")
-
-                # Generate response with streaming
-                try:
-                    response = gemini_client.generate_content(content_parts, stream=True)
-                    for chunk in response:
-                        if hasattr(chunk, 'text') and chunk.text:
-                            full_response += chunk.text
-                            message_placeholder.markdown(full_response + "▌")
-                except Exception as gemini_error:
-                    st.error(f"Gemini Vision Error: {str(gemini_error)}")
-                    st.error("Please ensure your image is clear and try again.")
-                    raise
-            else:
-                # Use Groq for text-only (faster)
-                # Call Groq API
-                # OPTIMIZATION: Reduced max_tokens from 2048 to 1024 to save quota
-                stream = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=messages_with_personality,
-                    stream=True,
-                    max_tokens=1024,  # Reduced from 2048
-                    temperature=0.7
-                )
-
-                # Stream output response
-                for chunk in stream:
-                    if chunk.choices[0].delta.content:
-                        full_response += chunk.choices[0].delta.content
-                        message_placeholder.markdown(full_response + "▌")
+            # Stream output response
+            for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    full_response += chunk.choices[0].delta.content
+                    message_placeholder.markdown(full_response + "▌")
 
             # Display full response
             message_placeholder.markdown(full_response)
