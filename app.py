@@ -1366,7 +1366,7 @@ with st.sidebar:
             img = st.session_state.uploaded_images[i]
             col_prev, col_del = st.columns([4, 1])
             with col_prev:
-                st.image(img, use_container_width=True)
+                st.image(img, use_column_width=True)
             with col_del:
                 # Use unique key based on filename and index
                 img_key = f"del_{img.name}_{i}" if hasattr(img, 'name') else f"del_img_{i}"
