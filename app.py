@@ -1216,7 +1216,7 @@ if prompt:
                 conversation_text,
                 stream=True,
                 generation_config={
-                    'max_output_tokens': 1024,
+                    'max_output_tokens': 2048,
                     'temperature': 0.7
                 }
             )
@@ -1238,7 +1238,10 @@ if prompt:
             message_placeholder.markdown(full_response)
 
         except Exception as e:
-            full_response = f"{t['error']} {str(e)}\n\n{t['check_api']}"
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"ERROR: {error_details}")  # Print to terminal for debugging
+            full_response = f"{t['error']}\n\n**Error Details:** {str(e)}\n\n{t['check_api']}"
             message_placeholder.markdown(full_response)
 
         # Add assistant message to chat history
