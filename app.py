@@ -104,9 +104,9 @@ def image_to_text_representation(image_file):
         image_file.seek(0)
         img = Image.open(image_file)
 
-        # Resize for processing - using 32x32 for better detail (1024 pixels)
-        # This is a good balance: detailed enough for recognition, small enough for tokens
-        img_small = img.resize((32, 32), Image.Resampling.LANCZOS)
+        # Resize for processing - using 64x64 for much better detail (4096 pixels)
+        # Higher resolution = better recognition accuracy
+        img_small = img.resize((64, 64), Image.Resampling.LANCZOS)
 
         # Convert to RGB if necessary
         if img_small.mode != 'RGB':
@@ -120,16 +120,16 @@ def image_to_text_representation(image_file):
         text_rep = f"\n[IMAGE ANALYSIS START]\n"
         text_rep += f"Original Size: {width}x{height} pixels\n"
         text_rep += f"Format: {format_type}\n"
-        text_rep += f"Analyzed at: 32x32 resolution (1024 pixels)\n\n"
+        text_rep += f"Analyzed at: 64x64 resolution (4096 pixels)\n\n"
 
         # Use compact hexadecimal representation to save tokens
-        text_rep += "PIXEL GRID (Hex RGB format for efficiency):\n"
-        text_rep += "Format: Each row is 32 pixels, each pixel as RRGGBB hex\n\n"
+        text_rep += "PIXEL GRID (Hex RGB format for high accuracy):\n"
+        text_rep += "Format: Each row is 64 pixels, each pixel as RRGGBB hex\n\n"
 
         pixels = img_small.load()
-        for y in range(32):
+        for y in range(64):
             row_data = []
-            for x in range(32):
+            for x in range(64):
                 r, g, b = pixels[x, y]
                 # Convert to compact hex format (e.g., FF00AA instead of (255,0,170))
                 row_data.append(f"{r:02X}{g:02X}{b:02X}")
@@ -172,8 +172,8 @@ def image_to_text_representation(image_file):
         # Add edge detection analysis for better object recognition
         text_rep += "\n[EDGE DETECTION]\n"
         edges_detected = []
-        for y in range(1, 31):  # Skip first and last row
-            for x in range(1, 31):  # Skip first and last column
+        for y in range(1, 63):  # Skip first and last row
+            for x in range(1, 63):  # Skip first and last column
                 # Simple edge detection: check brightness difference with neighbors
                 curr = sum(pixels[x, y]) // 3
                 right = sum(pixels[x + 1, y]) // 3
@@ -192,11 +192,19 @@ def image_to_text_representation(image_file):
             text_rep += f"Edge Center: ({avg_edge_x:.1f}, {avg_edge_y:.1f}) - main object location\n"
 
         text_rep += "\n[IMAGE ANALYSIS END]\n"
-        text_rep += "\nANALYSIS INSTRUCTIONS: The image is represented as a 32x32 pixel grid in hexadecimal RGB format. "
-        text_rep += "Each 6-character code represents one pixel (RRGGBB in hex). "
-        text_rep += "Analyze the pixel patterns, colors, edges, and brightness to identify: "
-        text_rep += "objects, text, people, animals, scenes, shapes, and any visible content. "
-        text_rep += "The edge detection data shows object boundaries. Higher edge density indicates complex shapes.\n"
+        text_rep += "\n=== CRITICAL ANALYSIS INSTRUCTIONS ===\n"
+        text_rep += "You are analyzing a 64x64 pixel grid (4096 pixels total) in hexadecimal RGB format.\n"
+        text_rep += "Each 6-character code is one pixel (RRGGBB hex). Example: FFFFFF=white, 000000=black.\n\n"
+        text_rep += "IMPORTANT: Carefully examine the ENTIRE pixel grid pattern to identify:\n"
+        text_rep += "1. ANIMALS: Look for fur textures, body shapes, faces, eyes, ears, tails\n"
+        text_rep += "   - Light beige/cream (F5E5D0-FFFAF0) = light colored fur (dogs, cats)\n"
+        text_rep += "   - Dark patterns around center = eyes, nose, facial features\n"
+        text_rep += "2. PEOPLE: Skin tones, clothing, hair, facial features, body poses\n"
+        text_rep += "3. OBJECTS: Shapes, textures, consistent color patterns\n"
+        text_rep += "4. BACKGROUNDS: Green tones = grass/nature, Blue = sky/water, etc.\n"
+        text_rep += "5. EDGE PATTERNS: High edge density = detailed objects with defined shapes\n\n"
+        text_rep += "DO NOT guess based only on color! Analyze the SHAPE and PATTERN in the pixel grid.\n"
+        text_rep += "The pixel data contains the actual visual structure - decode it carefully!\n"
 
         return text_rep
     except Exception as e:
