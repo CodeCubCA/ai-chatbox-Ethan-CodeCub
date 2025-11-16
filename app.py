@@ -1236,6 +1236,9 @@ if prompt:
         # Add assistant message to chat history
         st.session_state.messages.append({"role": "assistant", "content": full_response})
 
+        # Clear uploaded images after sending to prevent accidental reuse
+        st.session_state.uploaded_images = []
+
 # Sidebar
 with st.sidebar:
     st.header(t["settings"])
