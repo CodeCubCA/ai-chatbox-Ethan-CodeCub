@@ -240,21 +240,28 @@ def get_gemini_client():
 
 client = get_gemini_client()
 
-# Add cool rainbow gradient background
-st.markdown("""
-<style>
-    /* Rainbow animated background */
-    .stApp {
-        background: linear-gradient(124deg, #ff2400, #e81d1d, #e8b71d, #e3e81d, #1de840, #1ddde8, #2b1de8, #dd00f3, #dd00f3);
-        background-size: 1800% 1800%;
-        animation: rainbow 18s ease infinite;
-    }
+# Define gradient themes
+themes = {
+    "Rainbow": "linear-gradient(135deg, #667eea 0%, #764ba2 15%, #f093fb 30%, #4facfe 45%, #00f2fe 60%, #43e97b 75%, #fa709a 90%, #fee140 100%)",
+    "Ocean": "linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f5576c 50%, #4facfe 75%, #00f2fe 100%)",
+    "Sunset": "linear-gradient(135deg, #fa709a 0%, #fee140 25%, #fa8c16 50%, #ff6b6b 75%, #ee5a6f 100%)",
+    "Forest": "linear-gradient(135deg, #43e97b 0%, #38f9d7 25%, #4facfe 50%, #667eea 75%, #764ba2 100%)",
+    "Purple Dream": "linear-gradient(135deg, #a8edea 0%, #fed6e3 25%, #d299c2 50%, #c471ed 75%, #764ba2 100%)",
+    "Fire": "linear-gradient(135deg, #ff0844 0%, #ffb199 25%, #ff6b6b 50%, #ee5a6f 75%, #c44569 100%)",
+    "Cool Blue": "linear-gradient(135deg, #30cfd0 0%, #330867 25%, #667eea 50%, #4facfe 75%, #00f2fe 100%)",
+    "Neon": "linear-gradient(135deg, #fa8bff 0%, #2bd2ff 20%, #2bff88 40%, #f8ff2b 60%, #ff6b2b 80%, #fa2bff 100%)"
+}
 
-    @keyframes rainbow {
-        0% { background-position: 0% 82%; }
-        50% { background-position: 100% 19%; }
-        100% { background-position: 0% 82%; }
-    }
+# Apply selected theme
+selected_gradient = themes.get(st.session_state.theme, themes["Rainbow"])
+
+st.markdown(f"""
+<style>
+    /* Cool static gradient background */
+    .stApp {{
+        background: {selected_gradient};
+        background-attachment: fixed;
+    }}
 
     /* Make cards semi-transparent with glass effect */
     .stChatMessage {
@@ -339,6 +346,9 @@ if "ai_avatar" not in st.session_state:
 
 if "page_icon" not in st.session_state:
     st.session_state.page_icon = "💬"
+
+if "theme" not in st.session_state:
+    st.session_state.theme = "Rainbow"
 
 if "uploaded_images" not in st.session_state:
     st.session_state.uploaded_images = []
@@ -1512,6 +1522,35 @@ with st.sidebar:
 
     # Display current personality description in selected language
     st.caption(personality_descriptions[st.session_state.language][st.session_state.personality])
+
+    st.divider()
+
+    # Theme selection
+    st.subheader("🎨 Background Theme")
+
+    theme_icons = {
+        "Rainbow": "🌈",
+        "Ocean": "🌊",
+        "Sunset": "🌅",
+        "Forest": "🌲",
+        "Purple Dream": "💜",
+        "Fire": "🔥",
+        "Cool Blue": "❄️",
+        "Neon": "⚡"
+    }
+
+    selected_theme = st.selectbox(
+        "Choose your background theme:",
+        options=list(themes.keys()),
+        index=list(themes.keys()).index(st.session_state.theme),
+        format_func=lambda x: f"{theme_icons[x]} {x}"
+    )
+
+    # Update state if theme changed
+    if selected_theme != st.session_state.theme:
+        st.session_state.theme = selected_theme
+        st.success(f"Theme changed to {theme_icons[selected_theme]} {selected_theme}!")
+        st.rerun()
 
     st.divider()
 
