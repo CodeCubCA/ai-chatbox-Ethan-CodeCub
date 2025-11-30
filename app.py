@@ -14,10 +14,36 @@ import google.generativeai as genai
 
 # Set page configuration FIRST - must be before any other Streamlit commands
 st.set_page_config(
-    page_title="My Can Do Everything AI Assistant",
+    page_title="ethel-chat",
     page_icon="🧑‍💻",
     layout="centered"
 )
+
+# Initialize session state IMMEDIATELY after page config
+if "theme" not in st.session_state:
+    st.session_state.theme = "Rainbow"
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "personality" not in st.session_state:
+    st.session_state.personality = "Friendly"
+if "language" not in st.session_state:
+    st.session_state.language = "English"
+if "user_name" not in st.session_state:
+    st.session_state.user_name = ""
+if "user_email" not in st.session_state:
+    st.session_state.user_email = ""
+if "signed_in" not in st.session_state:
+    st.session_state.signed_in = False
+if "show_help" not in st.session_state:
+    st.session_state.show_help = False
+if "profile_photo" not in st.session_state:
+    st.session_state.profile_photo = None
+if "ai_avatar" not in st.session_state:
+    st.session_state.ai_avatar = None
+if "page_icon" not in st.session_state:
+    st.session_state.page_icon = "💬"
+if "uploaded_images" not in st.session_state:
+    st.session_state.uploaded_images = []
 
 # Web search function with caching
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -316,42 +342,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state FIRST
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-if "personality" not in st.session_state:
-    st.session_state.personality = "Friendly"
-
-if "language" not in st.session_state:
-    st.session_state.language = "English"
-
-if "user_name" not in st.session_state:
-    st.session_state.user_name = ""
-
-if "user_email" not in st.session_state:
-    st.session_state.user_email = ""
-
-if "signed_in" not in st.session_state:
-    st.session_state.signed_in = False
-
-if "show_help" not in st.session_state:
-    st.session_state.show_help = False
-
-if "profile_photo" not in st.session_state:
-    st.session_state.profile_photo = None
-
-if "ai_avatar" not in st.session_state:
-    st.session_state.ai_avatar = None
-
-if "page_icon" not in st.session_state:
-    st.session_state.page_icon = "💬"
-
-if "theme" not in st.session_state:
-    st.session_state.theme = "Rainbow"
-
-if "uploaded_images" not in st.session_state:
-    st.session_state.uploaded_images = []
+# Session state already initialized at the top of the file
 
 # Language instruction templates and UI translations
 language_instructions = {
@@ -370,8 +361,8 @@ language_instructions = {
 # UI translations for all languages
 ui_translations = {
     "English": {
-        "title": "💬 {name}'s Can Do Everything AI Buddy",
-        "title_default": "💬 My Can Do Everything AI Buddy",
+        "title": "💬 {name}'s ethel-chat",
+        "title_default": "💬 ethel-chat",
         "caption": "Your versatile AI assistant - talk about literally anything",
         "enter_name": "Enter your name:",
         "name_placeholder": "Your name",
