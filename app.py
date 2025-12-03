@@ -281,17 +281,17 @@ themes = {
 # Apply selected theme
 selected_gradient = themes.get(st.session_state.theme, themes["Rainbow"])
 
-# CSS styling with theme - pylance may flag 'background' but it's valid CSS in the f-string
-st.markdown(f"""
+# CSS styling with theme using .format() to avoid Pylance false positives
+css_style = """
 <style>
     /* Cool static gradient background */
     .stApp {{
-        background: {selected_gradient};
+        background: {gradient};
         background-attachment: fixed;
     }}
 
     /* Make cards semi-transparent with glass effect */
-    .stChatMessage {
+    .stChatMessage {{
         background-color: rgba(255, 255, 255, 0.85) !important;
         backdrop-filter: blur(15px);
         border-radius: 20px;
@@ -299,10 +299,10 @@ st.markdown(f"""
         margin: 15px 0;
         box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.4);
         border: 1px solid rgba(255, 255, 255, 0.3);
-    }
+    }}
 
     /* Rainbow gradient sidebar */
-    [data-testid="stSidebar"] {
+    [data-testid="stSidebar"] {{
         background: linear-gradient(180deg,
             rgba(255, 36, 0, 0.7) 0%,
             rgba(232, 29, 29, 0.7) 14%,
@@ -313,19 +313,19 @@ st.markdown(f"""
             rgba(43, 29, 232, 0.7) 84%,
             rgba(221, 0, 243, 0.7) 100%);
         backdrop-filter: blur(15px);
-    }
+    }}
 
     /* Glowing input box */
-    .stChatInputContainer {
+    .stChatInputContainer {{
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
         backdrop-filter: blur(10px);
         border-radius: 30px;
         border: 2px solid rgba(255, 255, 255, 0.3);
         box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-    }
+    }}
 
     /* Make buttons glow */
-    .stButton>button {
+    .stButton>button {{
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.3);
@@ -334,14 +334,16 @@ st.markdown(f"""
         font-weight: bold;
         text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
         transition: all 0.3s ease;
-    }
+    }}
 
-    .stButton>button:hover {
+    .stButton>button:hover {{
         transform: scale(1.05);
         box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
-    }
+    }}
 </style>
-""", unsafe_allow_html=True)
+""".format(gradient=selected_gradient)
+
+st.markdown(css_style, unsafe_allow_html=True)
 
 # Session state already initialized at the top of the file
 
