@@ -281,6 +281,7 @@ themes = {
 # Apply selected theme
 selected_gradient = themes.get(st.session_state.theme, themes["Rainbow"])
 
+# CSS styling with theme - pylance may flag 'background' but it's valid CSS in the f-string
 st.markdown(f"""
 <style>
     /* Cool static gradient background */
