@@ -44,6 +44,8 @@ if "page_icon" not in st.session_state:
     st.session_state.page_icon = "💬"
 if "uploaded_images" not in st.session_state:
     st.session_state.uploaded_images = []
+if "job" not in st.session_state:
+    st.session_state.job = "Just chat"
 
 # Web search function with caching
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -364,8 +366,8 @@ language_instructions = {
 # UI translations for all languages
 ui_translations = {
     "English": {
-        "title": "💬 {name}'s ethel-chat",
-        "title_default": "💬 ethel-chat",
+        "title": "💬 {name}'s {job}",
+        "title_default": "💬 {job}",
         "caption": "Your versatile AI assistant - talk about literally anything",
         "enter_name": "Enter your name:",
         "name_placeholder": "Your name",
@@ -849,6 +851,14 @@ ui_translations = {
     }
 }
 
+# Define AI job/role settings (for API - always in English)
+job_prompts = {
+    "Just chat": "You are a versatile AI assistant ready to chat about anything.",
+    "Game pro": "You are a gaming expert AI assistant. You have deep knowledge about video games, gaming strategies, game mechanics, esports, gaming hardware, and the gaming industry. Help users with game recommendations, walkthroughs, tips, tricks, and gaming-related questions.",
+    "Study buddy": "You are an educational AI assistant focused on helping students learn. You excel at explaining complex concepts clearly, creating study plans, answering homework questions, providing learning resources, and motivating students. You adapt explanations to different learning styles.",
+    "Coder": "You are an expert programming AI assistant. You specialize in helping with code writing, debugging, code reviews, explaining programming concepts, suggesting best practices, and solving coding problems across multiple programming languages and frameworks. Always provide clean, well-commented code examples."
+}
+
 # Define AI personality settings (for API - always in English)
 personality_prompts = {
     "Friendly": "You are a warm and friendly AI assistant who chats like a friend. Use a kind tone and make conversations relaxed and pleasant. Do not use emojis in your responses. Always understand the user's intent even if they make typos, spelling mistakes, or use incorrect words. Be forgiving and helpful. When showing Python code examples, always wrap them in ```python code blocks so they can be executed.",
@@ -981,11 +991,12 @@ if not st.session_state.signed_in:
 # Page title with help button in top right corner
 col_title, col_help = st.columns([6, 1])
 with col_title:
-    # Page title - personalize with user name if provided
+    # Page title - personalize with user name and job if provided
+    job_display = "ethel-chat" if st.session_state.job == "Just chat" else st.session_state.job
     if st.session_state.user_name:
-        st.title(t["title"].format(name=st.session_state.user_name))
+        st.title(t["title"].format(name=st.session_state.user_name, job=job_display))
     else:
-        st.title(t["title_default"])
+        st.title(t["title_default"].format(job=job_display))
     st.caption(t["caption"])
 with col_help:
     st.write("")  # Add spacing
@@ -1156,7 +1167,7 @@ if prompt:
             image_analysis_note = "\n\nENHANCED IMAGE ANALYSIS: When you receive [IMAGE ANALYSIS START]...[IMAGE ANALYSIS END] sections, you're getting a 32x32 pixel grid (1024 pixels total) in hexadecimal RGB format. Each pixel is 6 hex characters (RRGGBB). The data includes: 1) Full pixel grid in hex format, 2) Color analysis (average color, dominant tones, brightness), 3) Edge detection data showing object boundaries and locations. Use ALL this data together to accurately identify objects, people, animals, text, scenes, and content. The 32x32 resolution with hex encoding provides good detail while staying token-efficient. Edge detection helps you locate and identify distinct objects in the image."
             system_message = {
                 "role": "system",
-                "content": f"{personality_prompts[st.session_state.personality]} {language_instructions[st.session_state.language]} {internet_note}{image_analysis_note}"
+                "content": f"{job_prompts[st.session_state.job]} {personality_prompts[st.session_state.personality]} {language_instructions[st.session_state.language]} {internet_note}{image_analysis_note}"
             }
 
             # Convert messages to API format with vision support
@@ -1489,6 +1500,25 @@ with st.sidebar:
         t = ui_translations[st.session_state.language]  # Update translations
         st.success(f"{t['language_changed']} {selected_language}!")
         st.rerun()
+
+    st.divider()
+
+    # AI Job/Role selection
+    st.subheader("AI Job")
+
+    selected_job = st.selectbox(
+        "Choose AI's role:",
+        options=list(job_prompts.keys()),
+        index=list(job_prompts.keys()).index(st.session_state.job),
+        key="job_selector"
+    )
+
+    # Update state if job changed
+    if selected_job != st.session_state.job:
+        st.session_state.job = selected_job
+        st.success(f"Switched to {selected_job} mode")
+
+    st.caption(job_prompts[st.session_state.job])
 
     st.divider()
 
