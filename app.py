@@ -11,6 +11,10 @@ from PIL import Image
 from urllib.parse import quote_plus
 from bs4 import BeautifulSoup
 import google.generativeai as genai
+from audio_recorder_streamlit import audio_recorder
+import speech_recognition as sr
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 # Set page configuration FIRST - must be before any other Streamlit commands
 st.set_page_config(
@@ -46,6 +50,14 @@ if "uploaded_images" not in st.session_state:
     st.session_state.uploaded_images = []
 if "job" not in st.session_state:
     st.session_state.job = "Just chat"
+if "auto_play_tts" not in st.session_state:
+    st.session_state.auto_play_tts = False
+if "selected_voice" not in st.session_state:
+    st.session_state.selected_voice = "Joanna"
+if "tts_audio" not in st.session_state:
+    st.session_state.tts_audio = {}
+if "last_audio" not in st.session_state:
+    st.session_state.last_audio = None
 
 # Web search function with caching
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -257,6 +269,48 @@ def is_valid_password(password):
         return False, "Password must contain at least 1 number"
     return True, "Password is valid"
 
+def generate_tts_audio(text, message_index):
+    """Generate TTS audio for a message using AWS Polly and cache it in session state"""
+    if not polly_client:
+        return None
+
+    # Check if audio already exists in cache
+    if message_index in st.session_state.tts_audio:
+        return st.session_state.tts_audio[message_index]
+
+    try:
+        # Limit text length to avoid very long audio files
+        if len(text) > 1500:
+            text = text[:1500] + "..."
+
+        # Get selected voice from session state
+        voice_id = st.session_state.get('selected_voice', 'Joanna')
+
+        # Generate speech using AWS Polly
+        response = polly_client.synthesize_speech(
+            Text=text,
+            Engine='standard',
+            VoiceId=voice_id,
+            OutputFormat='mp3',
+            LanguageCode='en-US'
+        )
+
+        # Read audio stream directly
+        if 'AudioStream' in response:
+            audio_bytes = response['AudioStream'].read()
+
+            # Cache the audio
+            st.session_state.tts_audio[message_index] = audio_bytes
+
+            return audio_bytes
+        else:
+            return None
+
+    except (BotoCoreError, ClientError) as e:
+        return None
+    except Exception as e:
+        return None
+
 # Load environment variables
 load_dotenv()
 
@@ -267,6 +321,22 @@ def get_gemini_client():
     return genai.GenerativeModel('gemini-2.5-flash')
 
 client = get_gemini_client()
+
+# Configure AWS Polly client for text-to-speech
+@st.cache_resource
+def get_polly_client():
+    return boto3.client(
+        'polly',
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+        region_name=os.getenv("AWS_REGION", "us-east-1")
+    )
+
+try:
+    polly_client = get_polly_client()
+except Exception as e:
+    polly_client = None
+    print(f"AWS Polly not configured: {e}")
 
 # Define gradient themes
 themes = {
@@ -1056,7 +1126,7 @@ def extract_and_run_code(text):
     return results
 
 # Display chat history
-for message in st.session_state.messages:
+for idx, message in enumerate(st.session_state.messages):
     avatar = None
     if message["role"] == "assistant" and st.session_state.ai_avatar is not None:
         avatar = st.session_state.ai_avatar
@@ -1078,7 +1148,7 @@ for message in st.session_state.messages:
         # If assistant message contains code, show run button
         content_text = message["content"] if isinstance(message["content"], str) else message["content"].get("text", "")
         if message["role"] == "assistant" and "```python" in content_text:
-            if st.button(t["run_code"], key=f"run_{st.session_state.messages.index(message)}"):
+            if st.button(t["run_code"], key=f"run_{idx}"):
                 code_results = extract_and_run_code(content_text)
                 for result in code_results:
                     with st.expander(t["code_result"], expanded=True):
@@ -1091,8 +1161,85 @@ for message in st.session_state.messages:
                             st.error(t["error_label"])
                             st.code(result['error'])
 
+    # Add TTS audio player for assistant messages (outside chat_message container)
+    if message["role"] == "assistant" and st.session_state.auto_play_tts and polly_client:
+        content_for_tts = content_text if isinstance(message["content"], str) else message["content"].get("text", "")
+
+        audio_bytes = generate_tts_audio(content_for_tts, idx)
+
+        if audio_bytes:
+            # Only autoplay the most recent message
+            is_latest = idx == len(st.session_state.messages) - 1
+
+            if is_latest:
+                # Convert audio bytes to base64 for HTML embedding
+                audio_base64 = base64.b64encode(audio_bytes).decode()
+
+                # Create HTML audio element with autoplay
+                audio_html = f"""
+                    <audio autoplay controls style="width: 100%;">
+                        <source src="data:audio/mpeg;base64,{audio_base64}" type="audio/mpeg">
+                    </audio>
+                """
+
+                # Display HTML audio (autoplay)
+                st.markdown(audio_html, unsafe_allow_html=True)
+            else:
+                # Show regular player for older messages
+                st.audio(audio_bytes, format='audio/mpeg')
+
+# Voice input section
+st.markdown("---")
+col_voice, col_text = st.columns([1, 4])
+with col_voice:
+    st.write("🎤 Voice:")
+    audio_bytes = audio_recorder(
+        text="",
+        recording_color="#e74c3c",
+        neutral_color="#3498db",
+        icon_name="microphone",
+        icon_size="1x"
+    )
+
+voice_prompt = None
+if audio_bytes:
+    # Check if this is a new recording
+    if st.session_state.last_audio != audio_bytes:
+        st.session_state.last_audio = audio_bytes
+
+        with st.spinner("Converting speech to text..."):
+            try:
+                # Initialize recognizer
+                recognizer = sr.Recognizer()
+
+                # Convert bytes to audio file
+                audio_data = sr.AudioFile(BytesIO(audio_bytes))
+
+                with audio_data as source:
+                    # Adjust for ambient noise
+                    recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                    audio = recognizer.record(source)
+
+                # Recognize speech using Google Speech Recognition
+                voice_prompt = recognizer.recognize_google(audio, language="en-US")
+                st.success(f"Recognized: {voice_prompt}")
+
+            except sr.UnknownValueError:
+                st.error("Could not understand audio. Please try again.")
+            except sr.RequestError as e:
+                st.error(f"Speech recognition error: {str(e)}")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+
+with col_text:
+    st.write("⌨️ Text:")
+
 # User input (no separate image upload section here - moved to sidebar)
 prompt = st.chat_input(t["input_placeholder"])
+
+# Use voice prompt if available, otherwise use typed input
+if voice_prompt:
+    prompt = voice_prompt
 
 # Handle user input
 if prompt:
@@ -1546,6 +1693,51 @@ with st.sidebar:
 
     # Display current personality description in selected language
     st.caption(personality_descriptions[st.session_state.language][st.session_state.personality])
+
+    st.divider()
+
+    # Audio Settings
+    st.subheader("🔊 Audio Settings")
+
+    # Auto-play TTS toggle
+    auto_play_tts = st.toggle(
+        "Auto-play AI responses",
+        value=st.session_state.auto_play_tts,
+        help="Automatically play audio for AI responses"
+    )
+
+    if auto_play_tts != st.session_state.auto_play_tts:
+        st.session_state.auto_play_tts = auto_play_tts
+        if auto_play_tts:
+            st.success("Audio enabled!")
+        else:
+            st.info("Audio disabled")
+
+    # Voice selector for AWS Polly
+    if polly_client:
+        POLLY_VOICES = {
+            "Joanna (Female, US)": "Joanna",
+            "Matthew (Male, US)": "Matthew",
+            "Ivy (Female, US Child)": "Ivy",
+            "Joey (Male, US)": "Joey",
+            "Kendra (Female, US)": "Kendra",
+            "Amy (Female, British)": "Amy",
+            "Brian (Male, British)": "Brian"
+        }
+
+        selected_voice = st.selectbox(
+            "Voice Selection:",
+            options=list(POLLY_VOICES.keys()),
+            index=list(POLLY_VOICES.values()).index(st.session_state.selected_voice) if st.session_state.selected_voice in POLLY_VOICES.values() else 0,
+            help="Select the voice for AI responses"
+        )
+
+        # Update session state if voice changed
+        if POLLY_VOICES[selected_voice] != st.session_state.selected_voice:
+            st.session_state.selected_voice = POLLY_VOICES[selected_voice]
+            # Clear TTS cache when voice changes
+            st.session_state.tts_audio = {}
+            st.success(f"Voice changed to {selected_voice}")
 
     st.divider()
 
