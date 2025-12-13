@@ -15,6 +15,8 @@ from audio_recorder_streamlit import audio_recorder
 import speech_recognition as sr
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+from huggingface_hub import InferenceClient
+import random
 
 # Set page configuration FIRST - must be before any other Streamlit commands
 st.set_page_config(
@@ -58,6 +60,8 @@ if "tts_audio" not in st.session_state:
     st.session_state.tts_audio = {}
 if "last_audio" not in st.session_state:
     st.session_state.last_audio = None
+if "image_generator_mode" not in st.session_state:
+    st.session_state.image_generator_mode = False
 
 # Web search function with caching
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -337,6 +341,17 @@ try:
 except Exception as e:
     polly_client = None
     print(f"AWS Polly not configured: {e}")
+
+# Configure HuggingFace client for image generation
+@st.cache_resource
+def get_hf_client():
+    token = os.getenv("HUGGINGFACE_TOKEN")
+    if token:
+        return InferenceClient(token=token)
+    return None
+
+hf_client = get_hf_client()
+IMAGE_MODEL = "black-forest-labs/FLUX.1-schnell"
 
 # Define gradient themes
 themes = {
@@ -1058,740 +1073,842 @@ if not st.session_state.signed_in:
     st.stop()
 
 # User is signed in - show main app
-# Page title with help button in top right corner
-col_title, col_help = st.columns([6, 1])
-with col_title:
-    # Page title - personalize with user name and job if provided
-    job_display = "ethel-chat" if st.session_state.job == "Just chat" else st.session_state.job
-    if st.session_state.user_name:
-        st.title(t["title"].format(name=st.session_state.user_name, job=job_display))
+
+# IMAGE GENERATOR MODE
+if st.session_state.image_generator_mode:
+    st.title("🎨 AI Image Generator")
+    st.markdown("Generate stunning images from text descriptions using AI")
+    st.markdown("---")
+
+    # Check if HuggingFace is configured
+    if not hf_client:
+        st.error("⚠️ HuggingFace API token not found!")
+        st.info("""
+        **Setup Instructions:**
+        1. Go to https://huggingface.co/settings/tokens
+        2. Create a new token
+        3. Add HUGGINGFACE_TOKEN=your_token to your .env file
+        4. Restart the application
+        """)
     else:
-        st.title(t["title_default"].format(job=job_display))
-    st.caption(t["caption"])
-with col_help:
-    st.write("")  # Add spacing
-    if st.button("❓", key="help_button_top", help=t["how_to_use"]):
-        st.session_state.show_help = True
+        # Image generation prompt
+        img_prompt = st.text_area(
+            "Enter your image description:",
+            placeholder="e.g., A serene landscape with mountains at sunset, digital art style",
+            height=100,
+            key="image_prompt"
+        )
 
-# Welcome message
-st.info(t["welcome"])
+        # Rainbow gradient CSS for generate button
+        st.markdown("""
+            <style>
+            div.stButton > button[kind="primary"] {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 15%, #f093fb 30%, #4facfe 45%, #00f2fe 60%, #43e97b 75%, #fa709a 90%, #fee140 100%);
+                color: white;
+                font-weight: bold;
+                border: none;
+                padding: 0.5rem 2rem;
+                font-size: 18px;
+            }
+            div.stButton > button[kind="primary"]:hover {
+                opacity: 0.9;
+                transform: scale(1.02);
+            }
+            </style>
+        """, unsafe_allow_html=True)
 
-# Function to extract and run Python code
-def extract_and_run_code(text):
-    """Extract Python code blocks from text and execute them"""
-    # Find code blocks in markdown format
-    code_pattern = r'```python\n(.*?)```'
-    matches = re.findall(code_pattern, text, re.DOTALL)
+        # Generate button
+        if st.button("🚀 Generate Image", type="primary", use_container_width=True):
+            if not img_prompt.strip():
+                st.warning("⚠️ Please enter a description for your image!")
+            else:
+                try:
+                    with st.spinner("🎨 Generating your image... This may take 10-30 seconds..."):
+                        # Generate image
+                        image = hf_client.text_to_image(
+                            prompt=img_prompt,
+                            model=IMAGE_MODEL,
+                            width=1024,
+                            height=1024
+                        )
 
-    results = []
-    for code in matches:
-        # Create a string buffer to capture output
-        output_buffer = StringIO()
-        error_buffer = StringIO()
+                        # Display the generated image
+                        st.success("✅ Image generated successfully!")
+                        st.image(image, caption=f"Generated: {img_prompt}", use_container_width=True)
 
-        try:
-            # Redirect stdout to capture print statements
-            old_stdout = sys.stdout
-            old_stderr = sys.stderr
-            sys.stdout = output_buffer
-            sys.stderr = error_buffer
+                        # Convert PIL Image to bytes for download
+                        buf = BytesIO()
+                        image.save(buf, format="PNG")
+                        byte_im = buf.getvalue()
 
-            # Execute the code
-            exec(code, {"__builtins__": __builtins__})
+                        # Download button
+                        st.download_button(
+                            label="📥 Download Image",
+                            data=byte_im,
+                            file_name="generated_image.png",
+                            mime="image/png"
+                        )
 
-            # Restore stdout
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
+                except Exception as e:
+                    st.error(f"❌ Error generating image: {str(e)}")
+                    st.info("Please try again or modify your prompt.")
 
-            output = output_buffer.getvalue()
-            error = error_buffer.getvalue()
+# CHAT MODE
+else:
+    # Page title with help button in top right corner
+    col_title, col_help = st.columns([6, 1])
+    with col_title:
+        # Page title - personalize with user name and job if provided
+        job_display = "ethel-chat" if st.session_state.job == "Just chat" else st.session_state.job
+        if st.session_state.user_name:
+            st.title(t["title"].format(name=st.session_state.user_name, job=job_display))
+        else:
+            st.title(t["title_default"].format(job=job_display))
+        st.caption(t["caption"])
+    with col_help:
+        st.write("")  # Add spacing
+        if st.button("❓", key="help_button_top", help=t["how_to_use"]):
+            st.session_state.show_help = True
 
-            if output or error:
+    # Welcome message
+    st.info(t["welcome"])
+
+    # Function to extract and run Python code
+    def extract_and_run_code(text):
+        """Extract Python code blocks from text and execute them"""
+        # Find code blocks in markdown format
+        code_pattern = r'```python\n(.*?)```'
+        matches = re.findall(code_pattern, text, re.DOTALL)
+
+        results = []
+        for code in matches:
+            # Create a string buffer to capture output
+            output_buffer = StringIO()
+            error_buffer = StringIO()
+
+            try:
+                # Redirect stdout to capture print statements
+                old_stdout = sys.stdout
+                old_stderr = sys.stderr
+                sys.stdout = output_buffer
+                sys.stderr = error_buffer
+
+                # Execute the code
+                exec(code, {"__builtins__": __builtins__})
+
+                # Restore stdout
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
+
+                output = output_buffer.getvalue()
+                error = error_buffer.getvalue()
+
+                if output or error:
+                    results.append({
+                        'code': code,
+                        'output': output if output else None,
+                        'error': error if error else None,
+                        'success': not error
+                    })
+            except Exception as e:
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
                 results.append({
                     'code': code,
-                    'output': output if output else None,
-                    'error': error if error else None,
-                    'success': not error
+                    'output': None,
+                    'error': str(e),
+                    'success': False
                 })
-        except Exception as e:
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            results.append({
-                'code': code,
-                'output': None,
-                'error': str(e),
-                'success': False
-            })
 
-    return results
+        return results
 
-# Display chat history
-for idx, message in enumerate(st.session_state.messages):
-    avatar = None
-    if message["role"] == "assistant" and st.session_state.ai_avatar is not None:
-        avatar = st.session_state.ai_avatar
-    elif message["role"] == "user" and st.session_state.profile_photo is not None:
-        avatar = st.session_state.profile_photo
+    # Display chat history
+    for idx, message in enumerate(st.session_state.messages):
+        avatar = None
+        if message["role"] == "assistant" and st.session_state.ai_avatar is not None:
+            avatar = st.session_state.ai_avatar
+        elif message["role"] == "user" and st.session_state.profile_photo is not None:
+            avatar = st.session_state.profile_photo
 
-    with st.chat_message(message["role"], avatar=avatar):
-        # Handle both string and dict content (for messages with images)
-        if isinstance(message["content"], dict):
-            # Message with images
-            st.markdown(message["content"]["text"])
-            if message["content"].get("images"):
-                for img in message["content"]["images"]:
-                    st.image(img, width=300)
-        else:
-            # Regular text message
-            st.markdown(message["content"])
-
-        # If assistant message contains code, show run button
-        content_text = message["content"] if isinstance(message["content"], str) else message["content"].get("text", "")
-        if message["role"] == "assistant" and "```python" in content_text:
-            if st.button(t["run_code"], key=f"run_{idx}"):
-                code_results = extract_and_run_code(content_text)
-                for result in code_results:
-                    with st.expander(t["code_result"], expanded=True):
-                        st.code(result['code'], language='python')
-                        if result['success']:
-                            if result['output']:
-                                st.success(t["output"])
-                                st.code(result['output'])
-                        else:
-                            st.error(t["error_label"])
-                            st.code(result['error'])
-
-    # Add TTS audio player for assistant messages (outside chat_message container)
-    if message["role"] == "assistant" and st.session_state.auto_play_tts and polly_client:
-        content_for_tts = content_text if isinstance(message["content"], str) else message["content"].get("text", "")
-
-        audio_bytes = generate_tts_audio(content_for_tts, idx)
-
-        if audio_bytes:
-            # Only autoplay the most recent message
-            is_latest = idx == len(st.session_state.messages) - 1
-
-            if is_latest:
-                # Convert audio bytes to base64 for HTML embedding
-                audio_base64 = base64.b64encode(audio_bytes).decode()
-
-                # Create HTML audio element with autoplay
-                audio_html = f"""
-                    <audio autoplay controls style="width: 100%;">
-                        <source src="data:audio/mpeg;base64,{audio_base64}" type="audio/mpeg">
-                    </audio>
-                """
-
-                # Display HTML audio (autoplay)
-                st.markdown(audio_html, unsafe_allow_html=True)
+        with st.chat_message(message["role"], avatar=avatar):
+            # Handle both string and dict content (for messages with images)
+            if isinstance(message["content"], dict):
+                # Message with images
+                st.markdown(message["content"]["text"])
+                if message["content"].get("images"):
+                    for img in message["content"]["images"]:
+                        st.image(img, width=300)
             else:
-                # Show regular player for older messages
-                st.audio(audio_bytes, format='audio/mpeg')
+                # Regular text message
+                st.markdown(message["content"])
 
-# Voice input section
-st.markdown("---")
-col_voice, col_text = st.columns([1, 4])
-with col_voice:
-    st.write("🎤 Voice:")
-    audio_bytes = audio_recorder(
-        text="",
-        recording_color="#e74c3c",
-        neutral_color="#3498db",
-        icon_name="microphone",
-        icon_size="1x"
-    )
+            # If assistant message contains code, show run button
+            content_text = message["content"] if isinstance(message["content"], str) else message["content"].get("text", "")
+            if message["role"] == "assistant" and "```python" in content_text:
+                if st.button(t["run_code"], key=f"run_{idx}"):
+                    code_results = extract_and_run_code(content_text)
+                    for result in code_results:
+                        with st.expander(t["code_result"], expanded=True):
+                            st.code(result['code'], language='python')
+                            if result['success']:
+                                if result['output']:
+                                    st.success(t["output"])
+                                    st.code(result['output'])
+                            else:
+                                st.error(t["error_label"])
+                                st.code(result['error'])
 
-voice_prompt = None
-if audio_bytes:
-    # Check if this is a new recording
-    if st.session_state.last_audio != audio_bytes:
-        st.session_state.last_audio = audio_bytes
+        # Add TTS audio player for assistant messages (outside chat_message container)
+        if message["role"] == "assistant" and st.session_state.auto_play_tts and polly_client:
+            content_for_tts = content_text if isinstance(message["content"], str) else message["content"].get("text", "")
 
-        with st.spinner("Converting speech to text..."):
-            try:
-                # Initialize recognizer
-                recognizer = sr.Recognizer()
+            audio_bytes = generate_tts_audio(content_for_tts, idx)
 
-                # Convert bytes to audio file
-                audio_data = sr.AudioFile(BytesIO(audio_bytes))
+            if audio_bytes:
+                # Only autoplay the most recent message
+                is_latest = idx == len(st.session_state.messages) - 1
 
-                with audio_data as source:
-                    # Adjust for ambient noise
-                    recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                    audio = recognizer.record(source)
+                if is_latest:
+                    # Convert audio bytes to base64 for HTML embedding
+                    audio_base64 = base64.b64encode(audio_bytes).decode()
 
-                # Recognize speech using Google Speech Recognition
-                voice_prompt = recognizer.recognize_google(audio, language="en-US")
-                st.success(f"Recognized: {voice_prompt}")
+                    # Create HTML audio element with autoplay
+                    audio_html = f"""
+                        <audio autoplay controls style="width: 100%;">
+                            <source src="data:audio/mpeg;base64,{audio_base64}" type="audio/mpeg">
+                        </audio>
+                    """
 
-            except sr.UnknownValueError:
-                st.error("Could not understand audio. Please try again.")
-            except sr.RequestError as e:
-                st.error(f"Speech recognition error: {str(e)}")
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-
-with col_text:
-    st.write("⌨️ Text:")
-
-# User input (no separate image upload section here - moved to sidebar)
-prompt = st.chat_input(t["input_placeholder"])
-
-# Use voice prompt if available, otherwise use typed input
-if voice_prompt:
-    prompt = voice_prompt
-
-# Handle user input
-if prompt:
-    # Prepare message content with images converted to bytes (so they persist across reruns)
-    saved_images = []
-    if st.session_state.uploaded_images:
-        for img_file in st.session_state.uploaded_images:
-            # Convert to bytes so it persists
-            img_file.seek(0)
-            img_bytes = BytesIO(img_file.read())
-            img_bytes.name = img_file.name  # Preserve filename
-            saved_images.append(img_bytes)
-
-    message_content = {"text": prompt, "images": saved_images if saved_images else []}
-
-    # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": message_content})
-
-    # Clear uploaded images after adding to message
-    st.session_state.uploaded_images = []
-
-    # Display user message
-    user_avatar = st.session_state.profile_photo if st.session_state.profile_photo is not None else None
-    with st.chat_message("user", avatar=user_avatar):
-        st.markdown(prompt)
-        # Display uploaded images if any
-        if message_content["images"]:
-            for img in message_content["images"]:
-                st.image(img, width=300)
-
-    # Check if we need to search the web
-    web_context = ""
-    search_keywords = ["search", "find", "look up", "what is", "what's", "who is", "current", "latest",
-                       "news", "today", "now", "recent", "weather", "forecast", "temperature",
-                       "tomorrow", "how to", "when is", "where is"]
-    url_pattern = r'https?://[^\s]+'
-
-    # Check for URLs in the prompt
-    urls_found = re.findall(url_pattern, prompt)
-    if urls_found:
-        with st.spinner("🌐 Fetching webpage content..."):
-            for url in urls_found:
-                webpage_content = fetch_webpage(url)
-                web_context += f"\n\n[Content from {url}]:\n{webpage_content}\n"
-
-    # Check if user wants to search
-    elif any(keyword in prompt.lower() for keyword in search_keywords):
-        with st.spinner("🔍 Searching the web..."):
-            search_results = web_search(prompt, num_results=5)
-            if search_results and len(search_results) > 0:
-                web_context = "\n\n[Web Search Results]:\n"
-                for i, result in enumerate(search_results):
-                    if "error" not in result:
-                        web_context += f"{i+1}. {result['title']}\n"
-                        web_context += f"   {result['snippet']}\n"
-                        web_context += f"   URL: {result['link']}\n\n"
-
-                if not web_context.strip().endswith("URL:"):
-                    st.info(f"🔍 Found {len(search_results)} search results")
-            else:
-                web_context = "\n\n[Web search was attempted but no results were found]"
-
-    # Display assistant reply
-    avatar = st.session_state.ai_avatar if st.session_state.ai_avatar is not None else None
-    with st.chat_message("assistant", avatar=avatar):
-        message_placeholder = st.empty()
-        full_response = ""
-
-        try:
-            # Build message list with personality and language settings
-            internet_note = "You have access to the internet. When users ask about current events, recent information, or provide URLs, use the web search results or webpage content provided in the context."
-            image_analysis_note = "\n\nENHANCED IMAGE ANALYSIS: When you receive [IMAGE ANALYSIS START]...[IMAGE ANALYSIS END] sections, you're getting a 32x32 pixel grid (1024 pixels total) in hexadecimal RGB format. Each pixel is 6 hex characters (RRGGBB). The data includes: 1) Full pixel grid in hex format, 2) Color analysis (average color, dominant tones, brightness), 3) Edge detection data showing object boundaries and locations. Use ALL this data together to accurately identify objects, people, animals, text, scenes, and content. The 32x32 resolution with hex encoding provides good detail while staying token-efficient. Edge detection helps you locate and identify distinct objects in the image."
-            system_message = {
-                "role": "system",
-                "content": f"{job_prompts[st.session_state.job]} {personality_prompts[st.session_state.personality]} {language_instructions[st.session_state.language]} {internet_note}{image_analysis_note}"
-            }
-
-            # Convert messages to API format with vision support
-            # OPTIMIZATION: Only send last 10 messages to save tokens
-            recent_messages = st.session_state.messages[-10:] if len(st.session_state.messages) > 10 else st.session_state.messages
-
-            api_messages = [system_message]
-            has_images = False
-            image_files = []  # Store actual image files for Gemini
-
-            for i, m in enumerate(recent_messages):
-                content = m["content"]
-                if isinstance(content, dict):
-                    # Check if this message has images - handle both list and empty list cases
-                    images_list = content.get("images", [])
-                    # Filter out None or empty objects
-                    valid_images = [img for img in images_list if img is not None]
-
-                    if valid_images and len(valid_images) > 0:
-                        # Convert images to compact text representation for Groq
-                        text = content.get("text", "")
-
-                        # Add each image as text data (now much smaller with 20x20)
-                        for idx, img_file in enumerate(valid_images):
-                            image_text = image_to_text_representation(img_file)
-                            text += f"\n\n--- IMAGE {idx + 1} ---\n{image_text}\n"
-
-                        # Add web context to the last user message
-                        if i == len(recent_messages) - 1 and m["role"] == "user" and web_context:
-                            text += web_context
-
-                        api_messages.append({"role": m["role"], "content": text})
-                    else:
-                        # Text only
-                        text = content.get("text", "")
-                        if i == len(recent_messages) - 1 and m["role"] == "user" and web_context:
-                            text += web_context
-                        api_messages.append({"role": m["role"], "content": text})
+                    # Display HTML audio (autoplay)
+                    st.markdown(audio_html, unsafe_allow_html=True)
                 else:
-                    message_text = content
-                    # Add web context to the last user message
-                    if i == len(recent_messages) - 1 and m["role"] == "user" and web_context:
-                        message_text += web_context
-                    api_messages.append({"role": m["role"], "content": message_text})
+                    # Show regular player for older messages
+                    st.audio(audio_bytes, format='audio/mpeg')
 
-            messages_with_personality = api_messages
+    # Voice input section
+    st.markdown("---")
+    col_voice, col_text = st.columns([1, 4])
+    with col_voice:
+        st.write("🎤 Voice:")
+        audio_bytes = audio_recorder(
+            text="",
+            recording_color="#e74c3c",
+            neutral_color="#3498db",
+            icon_name="microphone",
+            icon_size="1x"
+        )
 
-            # Use Gemini API for all requests (images are converted to 32x32 pixel text with edge detection)
-            # Build conversation prompt for Gemini
-            conversation_text = ""
-            for msg in messages_with_personality:
-                if msg["role"] == "system":
-                    conversation_text += msg["content"] + "\n\n"
-                elif msg["role"] == "user":
-                    conversation_text += "User: " + msg["content"] + "\n\n"
-                elif msg["role"] == "assistant":
-                    conversation_text += "Assistant: " + msg["content"] + "\n\n"
+    voice_prompt = None
+    if audio_bytes:
+        # Check if this is a new recording
+        if st.session_state.last_audio != audio_bytes:
+            st.session_state.last_audio = audio_bytes
 
-            # Call Gemini API with streaming
-            response = client.generate_content(
-                conversation_text,
-                stream=True,
-                generation_config={
-                    'max_output_tokens': 2048,
-                    'temperature': 0.7
-                }
-            )
+            with st.spinner("Converting speech to text..."):
+                try:
+                    # Initialize recognizer
+                    recognizer = sr.Recognizer()
 
-            # Stream output response
-            try:
-                for chunk in response:
-                    if hasattr(chunk, 'text') and chunk.text:
-                        full_response += chunk.text
-                        message_placeholder.markdown(full_response + "▌")
-            except Exception as stream_error:
-                # Check if it's a safety block or other error
-                if "block" in str(stream_error).lower():
-                    full_response += "\n\n[Response was blocked by safety filters]"
-                else:
-                    full_response += f"\n\n[Streaming error: {str(stream_error)}]"
+                    # Convert bytes to audio file
+                    audio_data = sr.AudioFile(BytesIO(audio_bytes))
 
-            # Display full response
-            message_placeholder.markdown(full_response)
+                    with audio_data as source:
+                        # Adjust for ambient noise
+                        recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                        audio = recognizer.record(source)
 
-        except Exception as e:
-            import traceback
-            error_details = traceback.format_exc()
-            print(f"ERROR: {error_details}")  # Print to terminal for debugging
-            full_response = f"{t['error']}\n\n**Error Details:** {str(e)}\n\n{t['check_api']}"
-            message_placeholder.markdown(full_response)
+                    # Recognize speech using Google Speech Recognition
+                    voice_prompt = recognizer.recognize_google(audio, language="en-US")
+                    st.success(f"Recognized: {voice_prompt}")
 
-        # Add assistant message to chat history
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
+                except sr.UnknownValueError:
+                    st.error("Could not understand audio. Please try again.")
+                except sr.RequestError as e:
+                    st.error(f"Speech recognition error: {str(e)}")
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
 
-        # Clear uploaded images after sending to prevent accidental reuse
+    with col_text:
+        st.write("⌨️ Text:")
+
+    # User input (no separate image upload section here - moved to sidebar)
+    prompt = st.chat_input(t["input_placeholder"])
+
+    # Use voice prompt if available, otherwise use typed input
+    if voice_prompt:
+        prompt = voice_prompt
+
+    # Handle user input
+    if prompt:
+        # Prepare message content with images converted to bytes (so they persist across reruns)
+        saved_images = []
+        if st.session_state.uploaded_images:
+            for img_file in st.session_state.uploaded_images:
+                # Convert to bytes so it persists
+                img_file.seek(0)
+                img_bytes = BytesIO(img_file.read())
+                img_bytes.name = img_file.name  # Preserve filename
+                saved_images.append(img_bytes)
+
+        message_content = {"text": prompt, "images": saved_images if saved_images else []}
+
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": message_content})
+
+        # Clear uploaded images after adding to message
         st.session_state.uploaded_images = []
 
-# Sidebar
-with st.sidebar:
-    st.header(t["settings"])
+        # Display user message
+        user_avatar = st.session_state.profile_photo if st.session_state.profile_photo is not None else None
+        with st.chat_message("user", avatar=user_avatar):
+            st.markdown(prompt)
+            # Display uploaded images if any
+            if message_content["images"]:
+                for img in message_content["images"]:
+                    st.image(img, width=300)
 
-    # Display profile photo with upload option
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        if st.session_state.profile_photo is not None:
-            if isinstance(st.session_state.profile_photo, str):
-                # It's an emoji character
-                st.markdown(f"<div style='background-color: #f0f2f6; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px;'>{st.session_state.profile_photo}</div>", unsafe_allow_html=True)
-            else:
-                # It's an uploaded image
-                st.image(st.session_state.profile_photo, width=80)
-        else:
-            st.markdown("<div style='background-color: #f0f2f6; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px;'>👤</div>", unsafe_allow_html=True)
+        # Check if we need to search the web
+        web_context = ""
+        search_keywords = ["search", "find", "look up", "what is", "what's", "who is", "current", "latest",
+                           "news", "today", "now", "recent", "weather", "forecast", "temperature",
+                           "tomorrow", "how to", "when is", "where is"]
+        url_pattern = r'https?://[^\s]+'
 
-    with col2:
-        st.write(f"**{st.session_state.user_name}**")
-        st.write(f"{st.session_state.user_email}")
+        # Check for URLs in the prompt
+        urls_found = re.findall(url_pattern, prompt)
+        if urls_found:
+            with st.spinner("🌐 Fetching webpage content..."):
+                for url in urls_found:
+                    webpage_content = fetch_webpage(url)
+                    web_context += f"\n\n[Content from {url}]:\n{webpage_content}\n"
 
-    # Profile avatar characters
-    profile_characters = {
-        "👤 Default": "👤",
-        "😊 Happy": "😊",
-        "😎 Cool": "😎",
-        "🤓 Nerd": "🤓",
-        "🥳 Party": "🥳",
-        "🤠 Cowboy": "🤠",
-        "🧑‍💻 Developer": "🧑‍💻",
-        "🧑‍🎨 Artist": "🧑‍🎨",
-        "🧑‍🚀 Astronaut": "🧑‍🚀",
-        "🧙 Wizard": "🧙",
-        "🦸 Superhero": "🦸",
-        "🧛 Vampire": "🧛",
-        "🧚 Fairy": "🧚",
-        "👨‍🎓 Graduate": "👨‍🎓",
-        "👑 Royalty": "👑"
-    }
+        # Check if user wants to search
+        elif any(keyword in prompt.lower() for keyword in search_keywords):
+            with st.spinner("🔍 Searching the web..."):
+                search_results = web_search(prompt, num_results=5)
+                if search_results and len(search_results) > 0:
+                    web_context = "\n\n[Web Search Results]:\n"
+                    for i, result in enumerate(search_results):
+                        if "error" not in result:
+                            web_context += f"{i+1}. {result['title']}\n"
+                            web_context += f"   {result['snippet']}\n"
+                            web_context += f"   URL: {result['link']}\n\n"
 
-    # Profile photo selection method
-    profile_method = st.radio(
-        "Choose profile photo method:",
-        ["Cartoon Characters", "Upload Custom Image"],
-        horizontal=True,
-        key="profile_method_radio"
-    )
+                    if not web_context.strip().endswith("URL:"):
+                        st.info(f"🔍 Found {len(search_results)} search results")
+                else:
+                    web_context = "\n\n[Web search was attempted but no results were found]"
 
-    if profile_method == "Cartoon Characters":
-        # Display character selection
-        selected_profile_char = st.selectbox(
-            "Select your character:",
-            options=list(profile_characters.keys()),
-            format_func=lambda x: x,
-            key="profile_character_select"
-        )
+        # Display assistant reply
+        avatar = st.session_state.ai_avatar if st.session_state.ai_avatar is not None else None
+        with st.chat_message("assistant", avatar=avatar):
+            message_placeholder = st.empty()
+            full_response = ""
 
-        if st.button("Apply Profile Character", use_container_width=True, key="apply_profile_char"):
-            st.session_state.profile_photo = profile_characters[selected_profile_char]
-            st.rerun()
+            try:
+                # Build message list with personality and language settings
+                internet_note = "You have access to the internet. When users ask about current events, recent information, or provide URLs, use the web search results or webpage content provided in the context."
+                image_analysis_note = "\n\nENHANCED IMAGE ANALYSIS: When you receive [IMAGE ANALYSIS START]...[IMAGE ANALYSIS END] sections, you're getting a 32x32 pixel grid (1024 pixels total) in hexadecimal RGB format. Each pixel is 6 hex characters (RRGGBB). The data includes: 1) Full pixel grid in hex format, 2) Color analysis (average color, dominant tones, brightness), 3) Edge detection data showing object boundaries and locations. Use ALL this data together to accurately identify objects, people, animals, text, scenes, and content. The 32x32 resolution with hex encoding provides good detail while staying token-efficient. Edge detection helps you locate and identify distinct objects in the image."
+                system_message = {
+                    "role": "system",
+                    "content": f"{job_prompts[st.session_state.job]} {personality_prompts[st.session_state.personality]} {language_instructions[st.session_state.language]} {internet_note}{image_analysis_note}"
+                }
 
-    else:
-        # Upload custom image
-        uploaded_file = st.file_uploader("Upload your profile photo", type=["png", "jpg", "jpeg"], key="profile_upload")
-        if uploaded_file is not None:
-            # Optimize image: resize and compress
-            img = Image.open(uploaded_file)
-            img.thumbnail((200, 200), Image.Resampling.LANCZOS)
-            if img.mode in ('RGBA', 'LA', 'P'):
-                background = Image.new('RGB', img.size, (255, 255, 255))
-                background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
-                img = background
-            buffer = BytesIO()
-            img.save(buffer, format='JPEG', quality=85, optimize=True)
-            buffer.seek(0)
-            st.session_state.profile_photo = buffer
-            st.rerun()
-    if st.button(t["signout_button"], use_container_width=True, key="signout_btn"):
-        # Clear all session state
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        # Reinitialize essential states
-        st.session_state.signed_in = False
-        st.session_state.user_name = ""
-        st.session_state.user_email = ""
-        st.session_state.messages = []
-        st.session_state.personality = "Friendly"
-        st.session_state.language = "English"
-        st.rerun()
+                # Convert messages to API format with vision support
+                # OPTIMIZATION: Only send last 10 messages to save tokens
+                recent_messages = st.session_state.messages[-10:] if len(st.session_state.messages) > 10 else st.session_state.messages
 
-    st.divider()
+                api_messages = [system_message]
+                has_images = False
+                image_files = []  # Store actual image files for Gemini
 
-    # Image upload section in sidebar
-    st.subheader("📷 Upload Images")
-    uploaded_image = st.file_uploader(
-        "Add images to your next message",
-        type=["png", "jpg", "jpeg"],
-        key="chat_image_upload",
-        accept_multiple_files=False,
-        label_visibility="collapsed"
-    )
-    if uploaded_image is not None:
-        # Check if this file is already in the list by comparing name and size
-        is_duplicate = any(
-            img.name == uploaded_image.name and img.size == uploaded_image.size
-            for img in st.session_state.uploaded_images
-        )
-        if not is_duplicate:
-            st.session_state.uploaded_images.append(uploaded_image)
-            st.rerun()
+                for i, m in enumerate(recent_messages):
+                    content = m["content"]
+                    if isinstance(content, dict):
+                        # Check if this message has images - handle both list and empty list cases
+                        images_list = content.get("images", [])
+                        # Filter out None or empty objects
+                        valid_images = [img for img in images_list if img is not None]
 
-    # Display preview of uploaded images
-    if st.session_state.uploaded_images:
-        st.write(f"**📎 Ready to send ({len(st.session_state.uploaded_images)} image{'s' if len(st.session_state.uploaded_images) > 1 else ''}):**")
+                        if valid_images and len(valid_images) > 0:
+                            # Convert images to compact text representation for Groq
+                            text = content.get("text", "")
 
-        def clear_all_images():
+                            # Add each image as text data (now much smaller with 20x20)
+                            for idx, img_file in enumerate(valid_images):
+                                image_text = image_to_text_representation(img_file)
+                                text += f"\n\n--- IMAGE {idx + 1} ---\n{image_text}\n"
+
+                            # Add web context to the last user message
+                            if i == len(recent_messages) - 1 and m["role"] == "user" and web_context:
+                                text += web_context
+
+                            api_messages.append({"role": m["role"], "content": text})
+                        else:
+                            # Text only
+                            text = content.get("text", "")
+                            if i == len(recent_messages) - 1 and m["role"] == "user" and web_context:
+                                text += web_context
+                            api_messages.append({"role": m["role"], "content": text})
+                    else:
+                        message_text = content
+                        # Add web context to the last user message
+                        if i == len(recent_messages) - 1 and m["role"] == "user" and web_context:
+                            message_text += web_context
+                        api_messages.append({"role": m["role"], "content": message_text})
+
+                messages_with_personality = api_messages
+
+                # Use Gemini API for all requests (images are converted to 32x32 pixel text with edge detection)
+                # Build conversation prompt for Gemini
+                conversation_text = ""
+                for msg in messages_with_personality:
+                    if msg["role"] == "system":
+                        conversation_text += msg["content"] + "\n\n"
+                    elif msg["role"] == "user":
+                        conversation_text += "User: " + msg["content"] + "\n\n"
+                    elif msg["role"] == "assistant":
+                        conversation_text += "Assistant: " + msg["content"] + "\n\n"
+
+                # Call Gemini API with streaming
+                response = client.generate_content(
+                    conversation_text,
+                    stream=True,
+                    generation_config={
+                        'max_output_tokens': 2048,
+                        'temperature': 0.7
+                    }
+                )
+
+                # Stream output response
+                try:
+                    for chunk in response:
+                        if hasattr(chunk, 'text') and chunk.text:
+                            full_response += chunk.text
+                            message_placeholder.markdown(full_response + "▌")
+                except Exception as stream_error:
+                    # Check if it's a safety block or other error
+                    if "block" in str(stream_error).lower():
+                        full_response += "\n\n[Response was blocked by safety filters]"
+                    else:
+                        full_response += f"\n\n[Streaming error: {str(stream_error)}]"
+
+                # Display full response
+                message_placeholder.markdown(full_response)
+
+            except Exception as e:
+                import traceback
+                error_details = traceback.format_exc()
+                print(f"ERROR: {error_details}")  # Print to terminal for debugging
+                full_response = f"{t['error']}\n\n**Error Details:** {str(e)}\n\n{t['check_api']}"
+                message_placeholder.markdown(full_response)
+
+            # Add assistant message to chat history
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+            # Clear uploaded images after sending to prevent accidental reuse
             st.session_state.uploaded_images = []
 
-        st.button("🗑️ Clear All Images", key="clear_all_images", use_container_width=True, on_click=clear_all_images)
+    # Sidebar
+    with st.sidebar:
+        st.header(t["settings"])
 
-        # Display images with delete buttons
-        for i in range(len(st.session_state.uploaded_images)):
-            if i >= len(st.session_state.uploaded_images):
-                break
-            img = st.session_state.uploaded_images[i]
-            col_prev, col_del = st.columns([4, 1])
-            with col_prev:
-                st.image(img, use_column_width=True)
-            with col_del:
-                # Use unique key based on filename and index
-                img_key = f"del_{img.name}_{i}" if hasattr(img, 'name') else f"del_img_{i}"
-
-                # Use partial to properly bind the index value
-                def delete_image_at_index(index):
-                    if index < len(st.session_state.uploaded_images):
-                        st.session_state.uploaded_images.pop(index)
-
-                st.button("❌", key=img_key, help="Remove", on_click=partial(delete_image_at_index, i))
-
-    st.divider()
-
-    # AI Avatar customization
-    st.subheader("🤖 AI Assistant Avatar")
-
-    # Cartoon character options
-    avatar_characters = {
-        "🤖 Robot": "🤖",
-        "🐱 Cat": "🐱",
-        "🐶 Dog": "🐶",
-        "🦊 Fox": "🦊",
-        "🐼 Panda": "🐼",
-        "🐨 Koala": "🐨",
-        "🦁 Lion": "🦁",
-        "🐯 Tiger": "🐯",
-        "🐸 Frog": "🐸",
-        "🐵 Monkey": "🐵",
-        "🦉 Owl": "🦉",
-        "🦄 Unicorn": "🦄",
-        "🐲 Dragon": "🐲",
-        "👽 Alien": "👽",
-        "🎃 Pumpkin": "🎃",
-        "⭐ Star": "⭐"
-    }
-
-    # Avatar selection method
-    avatar_method = st.radio(
-        "Choose avatar method:",
-        ["Cartoon Characters", "Upload Custom Image"],
-        horizontal=True,
-        label_visibility="collapsed"
-    )
-
-    if avatar_method == "Cartoon Characters":
-        # Display character selection
-        selected_ai_char = st.selectbox(
-            "Select AI character:",
-            options=list(avatar_characters.keys()),
-            format_func=lambda x: x,
-            key="ai_character_select"
-        )
-
-        if st.button("Apply AI Character", use_container_width=True, key="apply_ai_char"):
-            st.session_state.ai_avatar = avatar_characters[selected_ai_char]
-            st.rerun()
-
-    else:
-        # Upload custom image
-        ai_avatar_upload = st.file_uploader("Upload your AI avatar", type=["png", "jpg", "jpeg"], key="ai_avatar_upload")
-        if ai_avatar_upload is not None:
-            # Optimize image: resize and compress
-            img = Image.open(ai_avatar_upload)
-            img.thumbnail((200, 200), Image.Resampling.LANCZOS)
-            if img.mode in ('RGBA', 'LA', 'P'):
-                background = Image.new('RGB', img.size, (255, 255, 255))
-                background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
-                img = background
-            buffer = BytesIO()
-            img.save(buffer, format='JPEG', quality=85, optimize=True)
-            buffer.seek(0)
-            st.session_state.ai_avatar = buffer
-            st.rerun()
-
-    # Preview AI avatar in a nice display
-    if st.session_state.ai_avatar is not None:
-        col_av1, col_av2 = st.columns([1, 2])
-        with col_av1:
-            if isinstance(st.session_state.ai_avatar, str):
-                # It's an emoji character - display large
-                st.markdown(f"<div style='background-color: #f0f2f6; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px;'>{st.session_state.ai_avatar}</div>", unsafe_allow_html=True)
+        # Display profile photo with upload option
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            if st.session_state.profile_photo is not None:
+                if isinstance(st.session_state.profile_photo, str):
+                    # It's an emoji character
+                    st.markdown(f"<div style='background-color: #f0f2f6; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px;'>{st.session_state.profile_photo}</div>", unsafe_allow_html=True)
+                else:
+                    # It's an uploaded image
+                    st.image(st.session_state.profile_photo, width=80)
             else:
-                # It's an uploaded image
-                st.image(st.session_state.ai_avatar, width=80)
-        with col_av2:
-            st.write("**Current Avatar**")
-            if isinstance(st.session_state.ai_avatar, str):
-                st.caption("Emoji character")
-            else:
-                st.caption("Custom image")
+                st.markdown("<div style='background-color: #f0f2f6; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px;'>👤</div>", unsafe_allow_html=True)
 
-    st.divider()
+        with col2:
+            st.write(f"**{st.session_state.user_name}**")
+            st.write(f"{st.session_state.user_email}")
 
-    # Language selection
-    st.subheader(t["language"])
-    selected_language = st.selectbox(
-        t["choose_language"],
-        options=list(language_instructions.keys()),
-        index=list(language_instructions.keys()).index(st.session_state.language)
-    )
-
-    # Update state if language changed
-    if selected_language != st.session_state.language:
-        st.session_state.language = selected_language
-        t = ui_translations[st.session_state.language]  # Update translations
-        st.success(f"{t['language_changed']} {selected_language}!")
-        st.rerun()
-
-    st.divider()
-
-    # AI Job/Role selection
-    st.subheader("AI Job")
-
-    selected_job = st.selectbox(
-        "Choose AI's role:",
-        options=list(job_prompts.keys()),
-        index=list(job_prompts.keys()).index(st.session_state.job),
-        key="job_selector"
-    )
-
-    # Update state if job changed
-    if selected_job != st.session_state.job:
-        st.session_state.job = selected_job
-        st.success(f"Switched to {selected_job} mode")
-
-    st.caption(job_prompts[st.session_state.job])
-
-    st.divider()
-
-    # AI personality selection
-    st.subheader(t["personality"])
-
-    # Get personality names in current language
-    personality_names = {
-        "Friendly": t["friendly"],
-        "Professional": t["professional"],
-        "Humorous": t["humorous"]
-    }
-
-    selected_personality = st.selectbox(
-        t["choose_personality"],
-        options=list(personality_prompts.keys()),
-        index=list(personality_prompts.keys()).index(st.session_state.personality),
-        format_func=lambda x: f"{personality_icons[x]} {personality_names[x]}"
-    )
-
-    # Update state if personality changed
-    if selected_personality != st.session_state.personality:
-        st.session_state.personality = selected_personality
-        st.success(f"{t['switched_to']} {personality_icons[selected_personality]} {personality_names[selected_personality]} {t['mode']}")
-
-    # Display current personality description in selected language
-    st.caption(personality_descriptions[st.session_state.language][st.session_state.personality])
-
-    st.divider()
-
-    # Audio Settings
-    st.subheader("🔊 Audio Settings")
-
-    # Auto-play TTS toggle
-    auto_play_tts = st.toggle(
-        "Auto-play AI responses",
-        value=st.session_state.auto_play_tts,
-        help="Automatically play audio for AI responses"
-    )
-
-    if auto_play_tts != st.session_state.auto_play_tts:
-        st.session_state.auto_play_tts = auto_play_tts
-        if auto_play_tts:
-            st.success("Audio enabled!")
-        else:
-            st.info("Audio disabled")
-
-    # Voice selector for AWS Polly
-    if polly_client:
-        POLLY_VOICES = {
-            "Joanna (Female, US)": "Joanna",
-            "Matthew (Male, US)": "Matthew",
-            "Ivy (Female, US Child)": "Ivy",
-            "Joey (Male, US)": "Joey",
-            "Kendra (Female, US)": "Kendra",
-            "Amy (Female, British)": "Amy",
-            "Brian (Male, British)": "Brian"
+        # Profile avatar characters
+        profile_characters = {
+            "👤 Default": "👤",
+            "😊 Happy": "😊",
+            "😎 Cool": "😎",
+            "🤓 Nerd": "🤓",
+            "🥳 Party": "🥳",
+            "🤠 Cowboy": "🤠",
+            "🧑‍💻 Developer": "🧑‍💻",
+            "🧑‍🎨 Artist": "🧑‍🎨",
+            "🧑‍🚀 Astronaut": "🧑‍🚀",
+            "🧙 Wizard": "🧙",
+            "🦸 Superhero": "🦸",
+            "🧛 Vampire": "🧛",
+            "🧚 Fairy": "🧚",
+            "👨‍🎓 Graduate": "👨‍🎓",
+            "👑 Royalty": "👑"
         }
 
-        selected_voice = st.selectbox(
-            "Voice Selection:",
-            options=list(POLLY_VOICES.keys()),
-            index=list(POLLY_VOICES.values()).index(st.session_state.selected_voice) if st.session_state.selected_voice in POLLY_VOICES.values() else 0,
-            help="Select the voice for AI responses"
+        # Profile photo selection method
+        profile_method = st.radio(
+            "Choose profile photo method:",
+            ["Cartoon Characters", "Upload Custom Image"],
+            horizontal=True,
+            key="profile_method_radio"
         )
 
-        # Update session state if voice changed
-        if POLLY_VOICES[selected_voice] != st.session_state.selected_voice:
-            st.session_state.selected_voice = POLLY_VOICES[selected_voice]
-            # Clear TTS cache when voice changes
-            st.session_state.tts_audio = {}
-            st.success(f"Voice changed to {selected_voice}")
+        if profile_method == "Cartoon Characters":
+            # Display character selection
+            selected_profile_char = st.selectbox(
+                "Select your character:",
+                options=list(profile_characters.keys()),
+                format_func=lambda x: x,
+                key="profile_character_select"
+            )
 
-    st.divider()
+            if st.button("Apply Profile Character", use_container_width=True, key="apply_profile_char"):
+                st.session_state.profile_photo = profile_characters[selected_profile_char]
+                st.rerun()
 
-    # Theme selection
-    st.subheader("🎨 Background Theme")
-
-    theme_icons = {
-        "Rainbow": "🌈",
-        "Ocean": "🌊",
-        "Sunset": "🌅",
-        "Forest": "🌲",
-        "Purple Dream": "💜",
-        "Fire": "🔥",
-        "Cool Blue": "❄️",
-        "Neon": "⚡"
-    }
-
-    selected_theme = st.selectbox(
-        "Choose your background theme:",
-        options=list(themes.keys()),
-        index=list(themes.keys()).index(st.session_state.theme),
-        format_func=lambda x: f"{theme_icons[x]} {x}"
-    )
-
-    # Update state if theme changed
-    if selected_theme != st.session_state.theme:
-        st.session_state.theme = selected_theme
-        st.success(f"Theme changed to {theme_icons[selected_theme]} {selected_theme}!")
-        st.rerun()
-
-    st.divider()
-
-    # Clear chat history button
-    if st.button(t["clear_chat"]):
-        st.session_state.messages = []
-        st.rerun()
-
-    st.divider()
-
-    # Display current configuration
-    st.subheader(t["current_config"])
-    st.write(f"**{t['model']}**: Google Gemini 2.5 Flash")
-    st.write(f"**{t['language']}**: {st.session_state.language}")
-    st.write(f"**{t['personality']}**: {personality_icons[st.session_state.personality]} {personality_names[st.session_state.personality]}")
-    st.write(f"**{t['messages']}**: {len(st.session_state.messages)}")
-
-
-# Help dialog - must be defined outside sidebar
-if st.session_state.show_help:
-    @st.dialog(t["how_to_use"])
-    def show_help_dialog():
-        st.markdown(t["instructions"])
-        if st.button("Close", use_container_width=True):
-            st.session_state.show_help = False
+        else:
+            # Upload custom image
+            uploaded_file = st.file_uploader("Upload your profile photo", type=["png", "jpg", "jpeg"], key="profile_upload")
+            if uploaded_file is not None:
+                # Optimize image: resize and compress
+                img = Image.open(uploaded_file)
+                img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    background = Image.new('RGB', img.size, (255, 255, 255))
+                    background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+                    img = background
+                buffer = BytesIO()
+                img.save(buffer, format='JPEG', quality=85, optimize=True)
+                buffer.seek(0)
+                st.session_state.profile_photo = buffer
+                st.rerun()
+        if st.button(t["signout_button"], use_container_width=True, key="signout_btn"):
+            # Clear all session state
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            # Reinitialize essential states
+            st.session_state.signed_in = False
+            st.session_state.user_name = ""
+            st.session_state.user_email = ""
+            st.session_state.messages = []
+            st.session_state.personality = "Friendly"
+            st.session_state.language = "English"
             st.rerun()
 
-    show_help_dialog()
+        st.divider()
+
+        # Image upload section in sidebar
+        st.subheader("📷 Upload Images")
+        uploaded_image = st.file_uploader(
+            "Add images to your next message",
+            type=["png", "jpg", "jpeg"],
+            key="chat_image_upload",
+            accept_multiple_files=False,
+            label_visibility="collapsed"
+        )
+        if uploaded_image is not None:
+            # Check if this file is already in the list by comparing name and size
+            is_duplicate = any(
+                img.name == uploaded_image.name and img.size == uploaded_image.size
+                for img in st.session_state.uploaded_images
+            )
+            if not is_duplicate:
+                st.session_state.uploaded_images.append(uploaded_image)
+                st.rerun()
+
+        # Display preview of uploaded images
+        if st.session_state.uploaded_images:
+            st.write(f"**📎 Ready to send ({len(st.session_state.uploaded_images)} image{'s' if len(st.session_state.uploaded_images) > 1 else ''}):**")
+
+            def clear_all_images():
+                st.session_state.uploaded_images = []
+
+            st.button("🗑️ Clear All Images", key="clear_all_images", use_container_width=True, on_click=clear_all_images)
+
+            # Display images with delete buttons
+            for i in range(len(st.session_state.uploaded_images)):
+                if i >= len(st.session_state.uploaded_images):
+                    break
+                img = st.session_state.uploaded_images[i]
+                col_prev, col_del = st.columns([4, 1])
+                with col_prev:
+                    st.image(img, use_column_width=True)
+                with col_del:
+                    # Use unique key based on filename and index
+                    img_key = f"del_{img.name}_{i}" if hasattr(img, 'name') else f"del_img_{i}"
+
+                    # Use partial to properly bind the index value
+                    def delete_image_at_index(index):
+                        if index < len(st.session_state.uploaded_images):
+                            st.session_state.uploaded_images.pop(index)
+
+                    st.button("❌", key=img_key, help="Remove", on_click=partial(delete_image_at_index, i))
+
+        st.divider()
+
+        # AI Avatar customization
+        st.subheader("🤖 AI Assistant Avatar")
+
+        # Cartoon character options
+        avatar_characters = {
+            "🤖 Robot": "🤖",
+            "🐱 Cat": "🐱",
+            "🐶 Dog": "🐶",
+            "🦊 Fox": "🦊",
+            "🐼 Panda": "🐼",
+            "🐨 Koala": "🐨",
+            "🦁 Lion": "🦁",
+            "🐯 Tiger": "🐯",
+            "🐸 Frog": "🐸",
+            "🐵 Monkey": "🐵",
+            "🦉 Owl": "🦉",
+            "🦄 Unicorn": "🦄",
+            "🐲 Dragon": "🐲",
+            "👽 Alien": "👽",
+            "🎃 Pumpkin": "🎃",
+            "⭐ Star": "⭐"
+        }
+
+        # Avatar selection method
+        avatar_method = st.radio(
+            "Choose avatar method:",
+            ["Cartoon Characters", "Upload Custom Image"],
+            horizontal=True,
+            label_visibility="collapsed"
+        )
+
+        if avatar_method == "Cartoon Characters":
+            # Display character selection
+            selected_ai_char = st.selectbox(
+                "Select AI character:",
+                options=list(avatar_characters.keys()),
+                format_func=lambda x: x,
+                key="ai_character_select"
+            )
+
+            if st.button("Apply AI Character", use_container_width=True, key="apply_ai_char"):
+                st.session_state.ai_avatar = avatar_characters[selected_ai_char]
+                st.rerun()
+
+        else:
+            # Upload custom image
+            ai_avatar_upload = st.file_uploader("Upload your AI avatar", type=["png", "jpg", "jpeg"], key="ai_avatar_upload")
+            if ai_avatar_upload is not None:
+                # Optimize image: resize and compress
+                img = Image.open(ai_avatar_upload)
+                img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    background = Image.new('RGB', img.size, (255, 255, 255))
+                    background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+                    img = background
+                buffer = BytesIO()
+                img.save(buffer, format='JPEG', quality=85, optimize=True)
+                buffer.seek(0)
+                st.session_state.ai_avatar = buffer
+                st.rerun()
+
+        # Preview AI avatar in a nice display
+        if st.session_state.ai_avatar is not None:
+            col_av1, col_av2 = st.columns([1, 2])
+            with col_av1:
+                if isinstance(st.session_state.ai_avatar, str):
+                    # It's an emoji character - display large
+                    st.markdown(f"<div style='background-color: #f0f2f6; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px;'>{st.session_state.ai_avatar}</div>", unsafe_allow_html=True)
+                else:
+                    # It's an uploaded image
+                    st.image(st.session_state.ai_avatar, width=80)
+            with col_av2:
+                st.write("**Current Avatar**")
+                if isinstance(st.session_state.ai_avatar, str):
+                    st.caption("Emoji character")
+                else:
+                    st.caption("Custom image")
+
+        st.divider()
+
+        # Language selection
+        st.subheader(t["language"])
+        selected_language = st.selectbox(
+            t["choose_language"],
+            options=list(language_instructions.keys()),
+            index=list(language_instructions.keys()).index(st.session_state.language)
+        )
+
+        # Update state if language changed
+        if selected_language != st.session_state.language:
+            st.session_state.language = selected_language
+            t = ui_translations[st.session_state.language]  # Update translations
+            st.success(f"{t['language_changed']} {selected_language}!")
+            st.rerun()
+
+        st.divider()
+
+        # Image Generator Mode Toggle
+        st.subheader("🎨 Mode Selection")
+
+        image_mode = st.toggle(
+            "Image Generator Mode",
+            value=st.session_state.image_generator_mode,
+            help="Switch between chat mode and image generation mode"
+        )
+
+        if image_mode != st.session_state.image_generator_mode:
+            st.session_state.image_generator_mode = image_mode
+            if image_mode:
+                st.success("Switched to Image Generator Mode!")
+            else:
+                st.success("Switched to Chat Mode!")
+            st.rerun()
+
+        st.divider()
+
+        # AI Job/Role selection (only show in chat mode)
+        if not st.session_state.image_generator_mode:
+            st.subheader("AI Job")
+
+            selected_job = st.selectbox(
+                "Choose AI's role:",
+                options=list(job_prompts.keys()),
+                index=list(job_prompts.keys()).index(st.session_state.job),
+                key="job_selector"
+            )
+
+            # Update state if job changed
+            if selected_job != st.session_state.job:
+                st.session_state.job = selected_job
+                st.success(f"Switched to {selected_job} mode")
+
+            st.caption(job_prompts[st.session_state.job])
+
+            st.divider()
+
+            # AI personality selection
+            st.subheader(t["personality"])
+
+        # Get personality names in current language
+        personality_names = {
+            "Friendly": t["friendly"],
+            "Professional": t["professional"],
+            "Humorous": t["humorous"]
+        }
+
+        selected_personality = st.selectbox(
+            t["choose_personality"],
+            options=list(personality_prompts.keys()),
+            index=list(personality_prompts.keys()).index(st.session_state.personality),
+            format_func=lambda x: f"{personality_icons[x]} {personality_names[x]}"
+        )
+
+        # Update state if personality changed
+        if selected_personality != st.session_state.personality:
+            st.session_state.personality = selected_personality
+            st.success(f"{t['switched_to']} {personality_icons[selected_personality]} {personality_names[selected_personality]} {t['mode']}")
+
+        # Display current personality description in selected language
+        st.caption(personality_descriptions[st.session_state.language][st.session_state.personality])
+
+        st.divider()
+
+        # Audio Settings
+        st.subheader("🔊 Audio Settings")
+
+        # Auto-play TTS toggle
+        auto_play_tts = st.toggle(
+            "Auto-play AI responses",
+            value=st.session_state.auto_play_tts,
+            help="Automatically play audio for AI responses"
+        )
+
+        if auto_play_tts != st.session_state.auto_play_tts:
+            st.session_state.auto_play_tts = auto_play_tts
+            if auto_play_tts:
+                st.success("Audio enabled!")
+            else:
+                st.info("Audio disabled")
+
+        # Voice selector for AWS Polly
+        if polly_client:
+            POLLY_VOICES = {
+                "Joanna (Female, US)": "Joanna",
+                "Matthew (Male, US)": "Matthew",
+                "Ivy (Female, US Child)": "Ivy",
+                "Joey (Male, US)": "Joey",
+                "Kendra (Female, US)": "Kendra",
+                "Amy (Female, British)": "Amy",
+                "Brian (Male, British)": "Brian"
+            }
+
+            selected_voice = st.selectbox(
+                "Voice Selection:",
+                options=list(POLLY_VOICES.keys()),
+                index=list(POLLY_VOICES.values()).index(st.session_state.selected_voice) if st.session_state.selected_voice in POLLY_VOICES.values() else 0,
+                help="Select the voice for AI responses"
+            )
+
+            # Update session state if voice changed
+            if POLLY_VOICES[selected_voice] != st.session_state.selected_voice:
+                st.session_state.selected_voice = POLLY_VOICES[selected_voice]
+                # Clear TTS cache when voice changes
+                st.session_state.tts_audio = {}
+                st.success(f"Voice changed to {selected_voice}")
+
+        st.divider()
+
+        # Theme selection
+        st.subheader("🎨 Background Theme")
+
+        theme_icons = {
+            "Rainbow": "🌈",
+            "Ocean": "🌊",
+            "Sunset": "🌅",
+            "Forest": "🌲",
+            "Purple Dream": "💜",
+            "Fire": "🔥",
+            "Cool Blue": "❄️",
+            "Neon": "⚡"
+        }
+
+        selected_theme = st.selectbox(
+            "Choose your background theme:",
+            options=list(themes.keys()),
+            index=list(themes.keys()).index(st.session_state.theme),
+            format_func=lambda x: f"{theme_icons[x]} {x}"
+        )
+
+        # Update state if theme changed
+        if selected_theme != st.session_state.theme:
+            st.session_state.theme = selected_theme
+            st.success(f"Theme changed to {theme_icons[selected_theme]} {selected_theme}!")
+            st.rerun()
+
+        st.divider()
+
+        # Clear chat history button
+        if st.button(t["clear_chat"]):
+            st.session_state.messages = []
+            st.rerun()
+
+        st.divider()
+
+        # Display current configuration
+        st.subheader(t["current_config"])
+        st.write(f"**{t['model']}**: Google Gemini 2.5 Flash")
+        st.write(f"**{t['language']}**: {st.session_state.language}")
+        st.write(f"**{t['personality']}**: {personality_icons[st.session_state.personality]} {personality_names[st.session_state.personality]}")
+        st.write(f"**{t['messages']}**: {len(st.session_state.messages)}")
+
+
+    # Help dialog - must be defined outside sidebar
+    if st.session_state.show_help:
+        @st.dialog(t["how_to_use"])
+        def show_help_dialog():
+            st.markdown(t["instructions"])
+            if st.button("Close", use_container_width=True):
+                st.session_state.show_help = False
+                st.rerun()
+
+        show_help_dialog()
