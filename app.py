@@ -1286,20 +1286,20 @@ if st.session_state.image_generator_mode:
         4. Restart the application
         """)
     else:
-        # Check if random prompt was generated
+        # Check if random prompt was generated and update the text area value
         if st.session_state.random_prompt_generated:
-            default_prompt = st.session_state.random_prompt_generated
-            # Show a success message
-            st.success(f"🎲 Random prompt: {default_prompt}")
-            # Clear it after showing once
+            st.success(f"🎲 Random prompt generated! Click Generate Image to create it.")
+            # Set the text area value in session state
+            if "image_prompt" not in st.session_state:
+                st.session_state.image_prompt = st.session_state.random_prompt_generated
+            else:
+                st.session_state.image_prompt = st.session_state.random_prompt_generated
+            # Clear the random prompt flag
             st.session_state.random_prompt_generated = None
-        else:
-            default_prompt = ""
 
         # Image generation prompt
         img_prompt = st.text_area(
             "Enter your image description:",
-            value=default_prompt,
             placeholder="e.g., A serene landscape with mountains at sunset, digital art style",
             height=100,
             key="image_prompt"
