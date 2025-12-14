@@ -338,9 +338,14 @@ def get_polly_client():
 
 try:
     polly_client = get_polly_client()
+    # Test if credentials work
+    if polly_client and os.getenv("AWS_ACCESS_KEY_ID"):
+        polly_client = polly_client
+    else:
+        polly_client = None
 except Exception as e:
     polly_client = None
-    print(f"AWS Polly not configured: {e}")
+    print(f"AWS Polly error: {e}")
 
 # Configure HuggingFace client for image generation
 @st.cache_resource
@@ -1826,7 +1831,10 @@ else:
         if auto_play_tts != st.session_state.auto_play_tts:
             st.session_state.auto_play_tts = auto_play_tts
             if auto_play_tts:
-                st.success("Audio enabled!")
+                if polly_client:
+                    st.success("Audio enabled!")
+                else:
+                    st.warning("Audio enabled but AWS Polly not configured. Add AWS credentials to enable audio.")
             else:
                 st.info("Audio disabled")
 
