@@ -73,6 +73,8 @@ if "selected_art_style" not in st.session_state:
     st.session_state.selected_art_style = "All Styles"
 if "image_history" not in st.session_state:
     st.session_state.image_history = []
+if "show_image_history" not in st.session_state:
+    st.session_state.show_image_history = False
 
 # Random image generation prompts
 RANDOM_PROMPTS = [
@@ -1322,6 +1324,79 @@ if st.session_state.image_generator_mode:
             st.success(f"Theme changed to {theme_icons[selected_theme]} {selected_theme}!")
             st.rerun()
 
+        st.divider()
+
+        # Image History Section in Sidebar
+        st.subheader(f"🖼️ Image History ({len(st.session_state.image_history)}/10)")
+
+        # Toggle button to show/hide history
+        if st.button("📂 View Image History" if not st.session_state.show_image_history else "📂 Hide Image History",
+                     use_container_width=True, key="toggle_history"):
+            st.session_state.show_image_history = not st.session_state.show_image_history
+            st.rerun()
+
+        # Show history if toggled on
+        if st.session_state.show_image_history:
+            if st.session_state.image_history:
+                st.caption(f"{len(st.session_state.image_history)} images in history")
+
+                # Clear all history button
+                if st.button("🗑️ Clear All History", use_container_width=True, key="clear_all_hist", type="primary"):
+                    st.session_state.image_history = []
+                    st.success("All images deleted!")
+                    st.rerun()
+
+                st.markdown("---")
+
+                # Display images (1 per row for sidebar)
+                for idx, img_data in enumerate(st.session_state.image_history):
+                    # Display image
+                    st.image(img_data['image'], use_column_width=True)
+
+                    # Show timestamp
+                    time_str = img_data['timestamp'].strftime('%H:%M:%S')
+                    st.caption(f"🕐 {time_str}")
+
+                    # Show prompt in expander
+                    with st.expander("📝 Prompt"):
+                        st.write(f"**Prompt:** {img_data['prompt']}")
+                        st.write(f"**Style:** {img_data['style']}")
+
+                    # Action buttons in columns
+                    col1, col2, col3 = st.columns(3)
+
+                    with col1:
+                        # Download button
+                        st.download_button(
+                            label="📥",
+                            data=img_data['image_bytes'],
+                            file_name=f"img_{idx}_{img_data['timestamp'].strftime('%Y%m%d_%H%M%S')}.png",
+                            mime="image/png",
+                            key=f"dl_{idx}",
+                            help="Download",
+                            use_container_width=True
+                        )
+
+                    with col2:
+                        # Reuse prompt button
+                        if st.button("🔄", key=f"reuse_{idx}", help="Reuse prompt", use_container_width=True):
+                            st.session_state.image_prompt = img_data['prompt']
+                            st.session_state.selected_art_style = img_data['style']
+                            st.session_state.show_image_history = False
+                            st.success("Prompt loaded!")
+                            st.rerun()
+
+                    with col3:
+                        # Delete individual image button
+                        if st.button("🗑️", key=f"del_{idx}", help="Delete image", use_container_width=True):
+                            st.session_state.image_history.pop(idx)
+                            st.success("Image deleted!")
+                            st.rerun()
+
+                    st.markdown("---")
+            else:
+                st.info("No images yet. Generate some images!")
+
     # Check if HuggingFace is configured
     if not hf_client:
         st.error("⚠️ HuggingFace API token not found!")
@@ -1420,66 +1495,6 @@ if st.session_state.image_generator_mode:
                 except Exception as e:
                     st.error(f"❌ Error generating image: {str(e)}")
                     st.info("Please try again or modify your prompt.")
-
-        # Image History Gallery
-        st.markdown("---")
-        st.subheader(f"📸 Image History ({len(st.session_state.image_history)}/10)")
-
-        if st.session_state.image_history:
-            # Clear history button
-            col_clear, col_space = st.columns([1, 3])
-            with col_clear:
-                if st.button("🗑️ Clear History", use_container_width=True):
-                    st.session_state.image_history = []
-                    st.rerun()
-
-            st.caption("Your recent generated images (most recent first)")
-
-            # Display images in a grid (3 columns)
-            for i in range(0, len(st.session_state.image_history), 3):
-                cols = st.columns(3)
-                for j in range(3):
-                    idx = i + j
-                    if idx < len(st.session_state.image_history):
-                        img_data = st.session_state.image_history[idx]
-                        with cols[j]:
-                            # Display image
-                            st.image(img_data['image'], use_column_width=True)
-
-                            # Show timestamp
-                            time_str = img_data['timestamp'].strftime('%H:%M:%S')
-                            st.caption(f"🕐 {time_str}")
-
-                            # Show prompt in expander
-                            with st.expander("📝 View Prompt"):
-                                st.write(f"**Prompt:** {img_data['prompt']}")
-                                st.write(f"**Style:** {img_data['style']}")
-
-                            # Action buttons
-                            btn_col1, btn_col2 = st.columns(2)
-
-                            with btn_col1:
-                                # Download button
-                                st.download_button(
-                                    label="📥 Download",
-                                    data=img_data['image_bytes'],
-                                    file_name=f"image_{idx}_{img_data['timestamp'].strftime('%Y%m%d_%H%M%S')}.png",
-                                    mime="image/png",
-                                    key=f"download_{idx}",
-                                    use_container_width=True
-                                )
-
-                            with btn_col2:
-                                # Regenerate button
-                                if st.button("🔄 Reuse", key=f"regen_{idx}", use_container_width=True):
-                                    st.session_state.image_prompt = img_data['prompt']
-                                    st.session_state.selected_art_style = img_data['style']
-                                    st.success(f"✅ Prompt loaded! Click Generate to create.")
-                                    st.rerun()
-
-                            st.markdown("---")
-        else:
-            st.info("No images generated yet. Create your first image above!")
 
 # CHAT MODE
 else:
