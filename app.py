@@ -68,6 +68,8 @@ if "random_prompt_generated" not in st.session_state:
     st.session_state.random_prompt_generated = None
 if "random_image_result" not in st.session_state:
     st.session_state.random_image_result = None
+if "selected_art_style" not in st.session_state:
+    st.session_state.selected_art_style = "All Styles"
 
 # Random image generation prompts
 RANDOM_PROMPTS = [
@@ -1175,25 +1177,67 @@ if st.session_state.image_generator_mode:
         st.subheader("🎨 Style Settings")
         st.caption("Choose your preferred art style")
 
-        # Art style options (to be implemented)
+        # Art style options matching the screenshot
         art_styles = [
             "All Styles",
+            "None",
+            "Anime",
+            "Realistic",
             "Digital Art",
-            "Oil Painting",
             "Watercolor",
-            "Anime/Manga",
+            "Oil Painting",
+            "Cyberpunk",
+            "Fantasy",
             "Photorealistic",
             "Sketch",
             "3D Render",
             "Pixel Art",
-            "Abstract"
+            "Abstract",
+            "Steampunk",
+            "Cartoon",
+            "Comic Book",
+            "Impressionist"
         ]
 
         selected_style = st.selectbox(
             "Art Style:",
             options=art_styles,
+            index=art_styles.index(st.session_state.selected_art_style) if st.session_state.selected_art_style in art_styles else 0,
             help="Select an art style for image generation"
         )
+
+        # Apply Style button
+        if st.button("✨ Apply Style to Prompt", use_container_width=True, key="apply_style_btn"):
+            if selected_style != "All Styles" and selected_style != "None":
+                # Get current prompt or create new one
+                current_prompt = st.session_state.get("image_prompt", "")
+
+                # Remove any existing style suffix
+                for style in art_styles:
+                    if style != "All Styles" and style != "None":
+                        current_prompt = current_prompt.replace(f", {style.lower()} style", "")
+                        current_prompt = current_prompt.replace(f" {style.lower()} style", "")
+
+                # Add new style
+                if current_prompt.strip():
+                    st.session_state.image_prompt = f"{current_prompt.strip()}, {selected_style.lower()} style"
+                else:
+                    st.warning("Please enter a prompt first!")
+
+                st.session_state.selected_art_style = selected_style
+                st.success(f"✨ Applied {selected_style} style!")
+            elif selected_style == "None":
+                # Remove style from prompt
+                current_prompt = st.session_state.get("image_prompt", "")
+                for style in art_styles:
+                    if style != "All Styles" and style != "None":
+                        current_prompt = current_prompt.replace(f", {style.lower()} style", "")
+                        current_prompt = current_prompt.replace(f" {style.lower()} style", "")
+                st.session_state.image_prompt = current_prompt.strip()
+                st.session_state.selected_art_style = "None"
+                st.success("Removed style from prompt")
+            else:
+                st.info("Select a specific style to apply")
 
         st.divider()
 
