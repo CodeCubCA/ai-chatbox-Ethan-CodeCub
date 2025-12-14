@@ -17,6 +17,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from huggingface_hub import InferenceClient
 import random
+from datetime import datetime
 
 # Set page configuration FIRST - must be before any other Streamlit commands
 st.set_page_config(
@@ -70,6 +71,8 @@ if "random_image_result" not in st.session_state:
     st.session_state.random_image_result = None
 if "selected_art_style" not in st.session_state:
     st.session_state.selected_art_style = "All Styles"
+if "image_history" not in st.session_state:
+    st.session_state.image_history = []
 
 # Random image generation prompts
 RANDOM_PROMPTS = [
@@ -1382,26 +1385,101 @@ if st.session_state.image_generator_mode:
                             height=1024
                         )
 
-                        # Display the generated image
-                        st.success("✅ Image generated successfully!")
-                        st.image(image, caption=f"Generated: {img_prompt}", use_container_width=True)
-
-                        # Convert PIL Image to bytes for download
+                        # Convert PIL Image to bytes for download and storage
                         buf = BytesIO()
                         image.save(buf, format="PNG")
                         byte_im = buf.getvalue()
+                        buf.seek(0)  # Reset buffer position
+
+                        # Save to history
+                        image_data = {
+                            'image': image,
+                            'image_bytes': byte_im,
+                            'prompt': img_prompt,
+                            'style': st.session_state.selected_art_style,
+                            'timestamp': datetime.now()
+                        }
+                        st.session_state.image_history.insert(0, image_data)
+
+                        # Limit to 10 images
+                        if len(st.session_state.image_history) > 10:
+                            st.session_state.image_history = st.session_state.image_history[:10]
+
+                        # Display the generated image
+                        st.success("✅ Image generated successfully!")
+                        st.image(image, caption=f"Generated: {img_prompt}", use_container_width=True)
 
                         # Download button
                         st.download_button(
                             label="📥 Download Image",
                             data=byte_im,
-                            file_name="generated_image.png",
+                            file_name=f"generated_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
                             mime="image/png"
                         )
 
                 except Exception as e:
                     st.error(f"❌ Error generating image: {str(e)}")
                     st.info("Please try again or modify your prompt.")
+
+        # Image History Gallery
+        st.markdown("---")
+        st.subheader(f"📸 Image History ({len(st.session_state.image_history)}/10)")
+
+        if st.session_state.image_history:
+            # Clear history button
+            col_clear, col_space = st.columns([1, 3])
+            with col_clear:
+                if st.button("🗑️ Clear History", use_container_width=True):
+                    st.session_state.image_history = []
+                    st.rerun()
+
+            st.caption("Your recent generated images (most recent first)")
+
+            # Display images in a grid (3 columns)
+            for i in range(0, len(st.session_state.image_history), 3):
+                cols = st.columns(3)
+                for j in range(3):
+                    idx = i + j
+                    if idx < len(st.session_state.image_history):
+                        img_data = st.session_state.image_history[idx]
+                        with cols[j]:
+                            # Display image
+                            st.image(img_data['image'], use_column_width=True)
+
+                            # Show timestamp
+                            time_str = img_data['timestamp'].strftime('%H:%M:%S')
+                            st.caption(f"🕐 {time_str}")
+
+                            # Show prompt in expander
+                            with st.expander("📝 View Prompt"):
+                                st.write(f"**Prompt:** {img_data['prompt']}")
+                                st.write(f"**Style:** {img_data['style']}")
+
+                            # Action buttons
+                            btn_col1, btn_col2 = st.columns(2)
+
+                            with btn_col1:
+                                # Download button
+                                st.download_button(
+                                    label="📥 Download",
+                                    data=img_data['image_bytes'],
+                                    file_name=f"image_{idx}_{img_data['timestamp'].strftime('%Y%m%d_%H%M%S')}.png",
+                                    mime="image/png",
+                                    key=f"download_{idx}",
+                                    use_container_width=True
+                                )
+
+                            with btn_col2:
+                                # Regenerate button
+                                if st.button("🔄 Reuse", key=f"regen_{idx}", use_container_width=True):
+                                    st.session_state.image_prompt = img_data['prompt']
+                                    st.session_state.selected_art_style = img_data['style']
+                                    st.success(f"✅ Prompt loaded! Click Generate to create.")
+                                    st.rerun()
+
+                            st.markdown("---")
+        else:
+            st.info("No images generated yet. Create your first image above!")
 
 # CHAT MODE
 else:
