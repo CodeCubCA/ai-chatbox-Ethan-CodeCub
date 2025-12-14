@@ -64,6 +64,39 @@ if "image_generator_mode" not in st.session_state:
     st.session_state.image_generator_mode = False
 if "polly_error" not in st.session_state:
     st.session_state.polly_error = None
+if "random_prompt_generated" not in st.session_state:
+    st.session_state.random_prompt_generated = None
+if "random_image_result" not in st.session_state:
+    st.session_state.random_image_result = None
+
+# Random image generation prompts
+RANDOM_PROMPTS = [
+    "A magical forest with glowing mushrooms and fireflies at twilight",
+    "A futuristic cyberpunk city with neon lights reflecting on wet streets",
+    "A serene Japanese garden with cherry blossoms and a koi pond",
+    "A majestic dragon soaring through storm clouds",
+    "An underwater palace made of coral and pearls",
+    "A steampunk airship floating above Victorian-era London",
+    "A cozy cottage in the mountains during autumn",
+    "An alien landscape with purple sky and crystalline structures",
+    "A medieval castle on a cliff during a lightning storm",
+    "A tropical beach at sunset with palm trees swaying",
+    "A mystical library filled with floating books and magical energy",
+    "A robot chef cooking in a high-tech kitchen",
+    "A phoenix rising from flames in an ancient temple",
+    "A field of lavender under a starry night sky",
+    "A wizard's tower surrounded by swirling magical portals",
+    "An arctic explorer discovering an ice cave with glowing crystals",
+    "A carnival at night with colorful lights and rides",
+    "A samurai warrior standing in a bamboo forest",
+    "A giant tree house city in an enchanted forest",
+    "A spaceship landing on an alien planet with twin suns",
+    "A medieval marketplace bustling with people and merchants",
+    "A lighthouse on a rocky shore during a storm",
+    "A fairy tale castle made entirely of candy and sweets",
+    "A desert oasis with ancient ruins and palm trees",
+    "A mystical waterfall cascading into a glowing pool"
+]
 
 # Web search function with caching
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -1183,11 +1216,30 @@ if st.session_state.image_generator_mode:
         st.divider()
 
         # Random Generation
-        st.subheader("🎲 Random Generation")
-        if st.button("🎲 Generate Random Image", use_container_width=True):
-            st.info("Random generation feature coming soon!")
+        st.subheader("🎲 Random Generation Mode")
 
-        st.caption("Generate a random image based on a random prompt")
+        # Random generation modes
+        random_mode = st.radio(
+            "Random Mode:",
+            ["Random Prompt", "Random Style"],
+            horizontal=True,
+            help="Choose how to randomize: Pick a random prompt or add a random style to your text"
+        )
+
+        if st.button("🎲 Generate Random Prompt", use_container_width=True, key="random_gen_btn"):
+            # Pick a random prompt
+            random_prompt = random.choice(RANDOM_PROMPTS)
+            # Pick a random style if in Random Style mode
+            if random_mode == "Random Style":
+                random_styles = ["Digital Art", "Oil Painting", "Watercolor", "Anime/Manga",
+                               "Photorealistic", "Sketch", "3D Render", "Pixel Art", "Abstract"]
+                random_style = random.choice(random_styles)
+                random_prompt = f"{random_prompt}, {random_style.lower()} style"
+
+            # Store the generated prompt
+            st.session_state.random_prompt_generated = random_prompt
+
+        st.caption("Generate a surprise image with a random creative prompt")
 
         st.divider()
 
@@ -1234,9 +1286,20 @@ if st.session_state.image_generator_mode:
         4. Restart the application
         """)
     else:
+        # Check if random prompt was generated
+        if st.session_state.random_prompt_generated:
+            default_prompt = st.session_state.random_prompt_generated
+            # Show a success message
+            st.success(f"🎲 Random prompt: {default_prompt}")
+            # Clear it after showing once
+            st.session_state.random_prompt_generated = None
+        else:
+            default_prompt = ""
+
         # Image generation prompt
         img_prompt = st.text_area(
             "Enter your image description:",
+            value=default_prompt,
             placeholder="e.g., A serene landscape with mountains at sunset, digital art style",
             height=100,
             key="image_prompt"
