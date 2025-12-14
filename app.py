@@ -62,6 +62,8 @@ if "last_audio" not in st.session_state:
     st.session_state.last_audio = None
 if "image_generator_mode" not in st.session_state:
     st.session_state.image_generator_mode = False
+if "polly_error" not in st.session_state:
+    st.session_state.polly_error = None
 
 # Web search function with caching
 @st.cache_data(ttl=3600)  # Cache for 1 hour
@@ -337,15 +339,25 @@ def get_polly_client():
     )
 
 try:
-    polly_client = get_polly_client()
-    # Test if credentials work
-    if polly_client and os.getenv("AWS_ACCESS_KEY_ID"):
-        polly_client = polly_client
+    if os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY"):
+        polly_client = get_polly_client()
+        # Test if credentials work by trying to describe voices
+        try:
+            polly_client.describe_voices(LanguageCode='en-US')
+            st.session_state.polly_error = None  # Clear any previous errors
+        except Exception as test_error:
+            polly_client = None
+            error_msg = str(test_error)
+            st.session_state.polly_error = f"AWS Polly connection test failed: {error_msg}"
+            print(st.session_state.polly_error)
     else:
         polly_client = None
+        st.session_state.polly_error = "AWS credentials not configured in .env file"
+        print(st.session_state.polly_error)
 except Exception as e:
     polly_client = None
-    print(f"AWS Polly error: {e}")
+    st.session_state.polly_error = f"AWS Polly initialization error: {str(e)}"
+    print(st.session_state.polly_error)
 
 # Configure HuggingFace client for image generation
 @st.cache_resource
@@ -1083,7 +1095,133 @@ if not st.session_state.signed_in:
 if st.session_state.image_generator_mode:
     st.title("🎨 AI Image Generator")
     st.markdown("Generate stunning images from text descriptions using AI")
+
+    # Back button to return to chat mode
+    if st.button("← Back to Chat", type="secondary"):
+        st.session_state.image_generator_mode = False
+        st.rerun()
+
     st.markdown("---")
+
+    # Sidebar for Image Generator Mode
+    with st.sidebar:
+        st.header("⚙️ Settings")
+
+        # User profile display
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            if st.session_state.profile_photo is not None:
+                if isinstance(st.session_state.profile_photo, str):
+                    st.markdown(f"<div style='background-color: #f0f2f6; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px;'>{st.session_state.profile_photo}</div>", unsafe_allow_html=True)
+                else:
+                    st.image(st.session_state.profile_photo, width=80)
+            else:
+                st.markdown("<div style='background-color: #f0f2f6; border-radius: 50%; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; font-size: 48px;'>👤</div>", unsafe_allow_html=True)
+
+        with col2:
+            st.write(f"**{st.session_state.user_name}**")
+            st.write(f"{st.session_state.user_email}")
+
+        if st.button("Sign Out", use_container_width=True, key="img_signout"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.session_state.signed_in = False
+            st.rerun()
+
+        st.divider()
+
+        # Mode Toggle
+        st.subheader("🎨 Mode Selection")
+        if st.button("💬 Switch to Chat Mode", use_container_width=True):
+            st.session_state.image_generator_mode = False
+            st.rerun()
+
+        st.divider()
+
+        # Image Generator Settings
+        st.subheader("🎨 Style Settings")
+        st.caption("Choose your preferred art style")
+
+        # Art style options (to be implemented)
+        art_styles = [
+            "All Styles",
+            "Digital Art",
+            "Oil Painting",
+            "Watercolor",
+            "Anime/Manga",
+            "Photorealistic",
+            "Sketch",
+            "3D Render",
+            "Pixel Art",
+            "Abstract"
+        ]
+
+        selected_style = st.selectbox(
+            "Art Style:",
+            options=art_styles,
+            help="Select an art style for image generation"
+        )
+
+        st.divider()
+
+        # Image Size options
+        st.subheader("📐 Image Size")
+
+        size_options = {
+            "Square (1024x1024)": (1024, 1024),
+            "Landscape (1280x720)": (1280, 720),
+            "Portrait (720x1280)": (720, 1280),
+            "Wide (1920x1080)": (1920, 1080)
+        }
+
+        selected_size = st.selectbox(
+            "Image Dimensions:",
+            options=list(size_options.keys()),
+            help="Choose the size of generated images"
+        )
+
+        st.divider()
+
+        # Random Generation
+        st.subheader("🎲 Random Generation")
+        if st.button("🎲 Generate Random Image", use_container_width=True):
+            st.info("Random generation feature coming soon!")
+
+        st.caption("Generate a random image based on a random prompt")
+
+        st.divider()
+
+        # Advanced Settings
+        with st.expander("⚙️ Advanced Settings"):
+            st.slider("Guidance Scale", 1.0, 20.0, 7.5, 0.5, help="How closely to follow the prompt")
+            st.slider("Steps", 10, 100, 50, 5, help="Number of denoising steps")
+
+        st.divider()
+
+        # Theme selection
+        st.subheader("🎨 Background Theme")
+        theme_icons = {
+            "Rainbow": "🌈",
+            "Ocean": "🌊",
+            "Sunset": "🌅",
+            "Forest": "🌲",
+            "Purple Dream": "💜",
+            "Fire": "🔥",
+            "Cool Blue": "❄️",
+            "Neon": "⚡"
+        }
+
+        selected_theme = st.selectbox(
+            "Choose background:",
+            options=list(themes.keys()),
+            index=list(themes.keys()).index(st.session_state.theme),
+            format_func=lambda x: f"{theme_icons[x]} {x}"
+        )
+
+        if selected_theme != st.session_state.theme:
+            st.session_state.theme = selected_theme
+            st.success(f"Theme changed to {theme_icons[selected_theme]} {selected_theme}!")
+            st.rerun()
 
     # Check if HuggingFace is configured
     if not hf_client:
@@ -1834,7 +1972,9 @@ else:
                 if polly_client:
                     st.success("Audio enabled!")
                 else:
-                    st.warning("Audio enabled but AWS Polly not configured. Add AWS credentials to enable audio.")
+                    st.error("Audio enabled but AWS Polly not working!")
+                    if st.session_state.polly_error:
+                        st.warning(st.session_state.polly_error)
             else:
                 st.info("Audio disabled")
 
