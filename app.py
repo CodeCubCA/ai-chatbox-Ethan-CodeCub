@@ -1215,7 +1215,7 @@ if st.session_state.image_generator_mode:
         if st.button("✨ Apply Style to Prompt", use_container_width=True, key="apply_style_btn"):
             if selected_style != "All Styles" and selected_style != "None":
                 # Get current prompt or create new one
-                current_prompt = st.session_state.get("image_prompt", "")
+                current_prompt = st.session_state.get("image_prompt_value", "")
 
                 # Remove any existing style suffix
                 for style in art_styles:
@@ -1225,7 +1225,7 @@ if st.session_state.image_generator_mode:
 
                 # Add new style
                 if current_prompt.strip():
-                    st.session_state.image_prompt = f"{current_prompt.strip()}, {selected_style.lower()} style"
+                    st.session_state.image_prompt_value = f"{current_prompt.strip()}, {selected_style.lower()} style"
                 else:
                     st.warning("Please enter a prompt first!")
 
@@ -1233,12 +1233,12 @@ if st.session_state.image_generator_mode:
                 st.success(f"✨ Applied {selected_style} style!")
             elif selected_style == "None":
                 # Remove style from prompt
-                current_prompt = st.session_state.get("image_prompt", "")
+                current_prompt = st.session_state.get("image_prompt_value", "")
                 for style in art_styles:
                     if style != "All Styles" and style != "None":
                         current_prompt = current_prompt.replace(f", {style.lower()} style", "")
                         current_prompt = current_prompt.replace(f" {style.lower()} style", "")
-                st.session_state.image_prompt = current_prompt.strip()
+                st.session_state.image_prompt_value = current_prompt.strip()
                 st.session_state.selected_art_style = "None"
                 st.success("Removed style from prompt")
             else:
@@ -1380,7 +1380,7 @@ if st.session_state.image_generator_mode:
                     with col2:
                         # Reuse prompt button
                         if st.button("🔄", key=f"reuse_{idx}", help="Reuse prompt", use_container_width=True):
-                            st.session_state.image_prompt = img_data['prompt']
+                            st.session_state.image_prompt_value = img_data['prompt']
                             st.session_state.selected_art_style = img_data['style']
                             st.session_state.show_image_history = False
                             st.success("Prompt loaded!")
@@ -1389,9 +1389,13 @@ if st.session_state.image_generator_mode:
                     with col3:
                         # Delete individual image button
                         if st.button("🗑️", key=f"del_{idx}", help="Delete image", use_container_width=True):
-                            st.session_state.image_history.pop(idx)
-                            st.success("Image deleted!")
-                            st.rerun()
+                            # Bug #3 fix: Safe deletion with bounds checking
+                            if 0 <= idx < len(st.session_state.image_history):
+                                st.session_state.image_history.pop(idx)
+                                st.success("Image deleted!")
+                                st.rerun()
+                            else:
+                                st.error("Invalid image index!")
 
                     st.markdown("---")
             else:
@@ -1410,22 +1414,24 @@ if st.session_state.image_generator_mode:
     else:
         # Check if random prompt was generated and update the text area value
         if st.session_state.random_prompt_generated:
-            st.success(f"🎲 Random prompt generated! Click Generate Image to create it.")
-            # Set the text area value in session state
-            if "image_prompt" not in st.session_state:
-                st.session_state.image_prompt = st.session_state.random_prompt_generated
-            else:
-                st.session_state.image_prompt = st.session_state.random_prompt_generated
-            # Clear the random prompt flag
+            # Store temp value and clear flag FIRST to prevent loop
+            temp_prompt = st.session_state.random_prompt_generated
             st.session_state.random_prompt_generated = None
+            # Now set the prompt
+            st.session_state.image_prompt_value = temp_prompt
+            st.success(f"🎲 Random prompt: {temp_prompt}")
 
-        # Image generation prompt
+        # Image generation prompt (using separate key to avoid conflicts)
         img_prompt = st.text_area(
             "Enter your image description:",
+            value=st.session_state.get("image_prompt_value", ""),
             placeholder="e.g., A serene landscape with mountains at sunset, digital art style",
             height=100,
-            key="image_prompt"
+            key="image_prompt_widget"
         )
+
+        # Sync the widget value to session state
+        st.session_state.image_prompt_value = img_prompt
 
         # Rainbow gradient CSS for generate button
         st.markdown("""
@@ -1954,8 +1960,10 @@ else:
             label_visibility="collapsed"
         )
         if uploaded_image is not None:
-            # Check if this file is already in the list by comparing name and size
+            # Bug #6 fix: Check if this file is already in the list by comparing name and size with attribute checks
             is_duplicate = any(
+                hasattr(img, 'name') and hasattr(img, 'size') and
+                hasattr(uploaded_image, 'name') and hasattr(uploaded_image, 'size') and
                 img.name == uploaded_image.name and img.size == uploaded_image.size
                 for img in st.session_state.uploaded_images
             )
