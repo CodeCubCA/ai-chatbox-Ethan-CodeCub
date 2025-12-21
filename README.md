@@ -1,1 +1,21 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/a2pucUEo)
+---
+title: AI Chatbox
+emoji: 🤖
+colorFrom: blue
+colorTo: purple
+sdk: streamlit
+sdk_version: "1.40.1"
+app_file: app.py
+pinned: false
+---
+
+# AI Chatbox
+
+An intelligent chatbot powered by Google's Gemini AI with support for:
+- Multi-language conversations
+- Image understanding and analysis
+- Text-to-speech with AWS Polly
+- AI Image Generation
+- Customizable themes and voices
+
+Built with Streamlit and deployed on Hugging Face Spaces.
